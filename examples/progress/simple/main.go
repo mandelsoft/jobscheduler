@@ -1,0 +1,19 @@
+package main
+
+import (
+	"os"
+	"time"
+
+	"github.com/mandelsoft/jobscheduler/uiprogress"
+)
+
+func main() {
+	p := uiprogress.New(os.Stdout)
+
+	bar := uiprogress.NewBar(p, 100).PrependFunc(uiprogress.Message("Downloading...")).PrependElapsed().AppendCompleted()
+
+	for i := 0; i <= 20; i++ {
+		bar.Set(i * 5)
+		time.Sleep(time.Millisecond * 500)
+	}
+}
