@@ -13,7 +13,7 @@ type Element interface {
 }
 
 type Ticker interface {
-	Tick()
+	Tick() bool
 }
 
 type Progress struct {
@@ -57,9 +57,13 @@ func (p *Progress) listen() {
 }
 
 func (p *Progress) tick() {
+	flush := false
 	for _, b := range p.blocks.Blocks() {
 		if e, ok := b.Payload().(Ticker); ok {
-			e.Tick()
+			flush = e.Tick() || flush
 		}
+	}
+	if flush {
+		p.blocks.Flush()
 	}
 }

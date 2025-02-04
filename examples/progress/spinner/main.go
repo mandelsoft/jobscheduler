@@ -16,7 +16,7 @@ func main() {
 
 	for i, b := range bars {
 		bar := uiprogress.NewSpinner(p, b).
-			SetFinal(fmt.Sprintf("action %d done", i+1)).
+			//	SetFinal(fmt.Sprintf("action %d done", i+1)).
 			SetSpeed(1).
 			PrependFunc(uiprogress.Message(fmt.Sprintf("working on %d ...", i+1))).
 			AppendElapsed()

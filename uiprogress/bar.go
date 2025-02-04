@@ -71,7 +71,7 @@ func NewBar(p *Progress, total int) *Bar {
 		Fill:     Fill,
 		Empty:    Empty,
 	}
-	b.ProgressBase = NewProgressBase(b, p.blocks)
+	b.ProgressBase = NewProgressBase(b, p.blocks, ProgressBaseOptions{})
 	return b
 }
 
@@ -102,9 +102,9 @@ func (b *Bar) SetWidth(n uint) *Bar {
 
 // Set the current count of the bar. It returns ErrMaxCurrentReached when trying n exceeds the total value. This is atomic operation and concurrency safe.
 func (b *Bar) Set(n int) bool {
-	b.Lock.Lock()
+	b.Start()
 
-	b.start()
+	b.Lock.Lock()
 	if b.current >= b.Total {
 		b.Lock.Unlock()
 		return false
@@ -120,19 +120,34 @@ func (b *Bar) Set(n int) bool {
 
 // Incr increments the current value by 1, time elapsed to current time and returns true. It returns false if the cursor has reached or exceeds total value.
 func (b *Bar) Incr() bool {
+	b.Start()
+	if b.incr() {
+		if b.isFinished() {
+			b.Close()
+		} else {
+			b.Flush()
+		}
+		return true
+	}
+	return false
+}
+
+func (b *Bar) isFinished() bool {
+	b.Lock.RLock()
+	defer b.Lock.RUnlock()
+	return b.current == b.Total
+}
+
+func (b *Bar) incr() bool {
 	b.Lock.Lock()
+	defer b.Lock.Unlock()
 
 	if b.current == b.Total {
-		b.Lock.Unlock()
 		return false
 	}
 
-	b.start()
 	n := b.current + 1
-
 	b.current = n
-	b.Lock.Unlock()
-	b.Flush()
 	return true
 }
 

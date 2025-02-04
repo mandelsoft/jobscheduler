@@ -3,6 +3,7 @@ package uiprogress
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -13,19 +14,107 @@ import (
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
-type ElemBase[T Element] struct {
+type BaseElement interface {
+	Update() bool
+}
+
+type ElemBase[T BaseElement] struct {
 	Lock sync.RWMutex
 
-	self  T
-	block *uiblocks.Block
+	self   T
+	block  *uiblocks.Block
+	closer func()
+
+	// timeStarted is time progress began.
+	timeStarted time.Time
+	timeElapsed time.Duration
+
+	closed bool
 }
 
-func NewElemBase[T any](self T, b *uiblocks.Block) ElemBase[T] {
-	return ElemBase[T]{self: self, block: b}
+type BaseOptions struct {
+	Closer func()
 }
 
-func (b ElemBase[T]) UIBlock() *uiblocks.Block {
+func NewElemBase[T BaseElement](self T, b *uiblocks.Block, opts BaseOptions) ElemBase[T] {
+	e := ElemBase[T]{self: self, block: b}
+	if opts.Closer != nil {
+		e.closer = opts.Closer
+	}
+	return e
+}
+
+func (b *ElemBase[T]) UIBlock() *uiblocks.Block {
 	return b.block
+}
+
+func (b *ElemBase[T]) Start() {
+	b.Lock.Lock()
+	defer b.Lock.Unlock()
+
+	if b.closed {
+		return
+	}
+
+	var t time.Time
+	if b.timeStarted == t {
+		b.timeStarted = time.Now()
+	}
+}
+
+func (b *ElemBase[T]) Close() error {
+	err := b.close()
+
+	if err == nil {
+		b.self.Update()
+		if b.closer != nil {
+			b.closer()
+		}
+		b.block.Close()
+	}
+	return err
+}
+
+func (b *ElemBase[T]) close() error {
+	b.Lock.Lock()
+	defer b.Lock.Unlock()
+
+	if b.closed {
+		return os.ErrClosed
+	}
+	b.closed = true
+	b.timeElapsed = time.Since(b.timeStarted)
+	return nil
+}
+
+func (b *ElemBase[T]) IsClosed() bool {
+	b.Lock.RLock()
+	defer b.Lock.RUnlock()
+
+	return b.closed
+}
+
+// TimeElapsed returns the time elapsed
+func (b *ElemBase[T]) TimeElapsed() time.Duration {
+	b.Lock.RLock()
+	defer b.Lock.RUnlock()
+
+	if b.closed {
+		return b.timeElapsed
+	}
+	return time.Since(b.timeStarted)
+}
+
+func PrettyTime(t time.Duration) string {
+	if t == 0 {
+		return ""
+	}
+	return units.Seconds(int(t.Truncate(time.Second) / time.Second))
+}
+
+// TimeElapsedString returns the formatted string representation of the time elapsed
+func (b *ElemBase[T]) TimeElapsedString() string {
+	return PrettyTime(b.TimeElapsed())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +124,8 @@ type MainFunc func(Element) (string, bool)
 type ProgressElement interface {
 	Element
 	Start()
-	Flush() error
+	IsClosed() bool
+	Update() bool
 	Visualize() (string, bool)
 }
 
@@ -44,18 +134,18 @@ type ProgressBase[T ProgressElement] struct {
 
 	appendFuncs  []DecoratorFunc
 	prependFuncs []DecoratorFunc
-
-	// timeStarted is time progress began.
-	timeStarted time.Time
-	finished    bool
 }
 
-type TimeElapsed interface {
-	TimeElapsed() time.Duration
+type ProgressBaseOptions struct {
+	BaseOptions
+	View int
 }
 
-func NewProgressBase[T ProgressElement](self T, b *uiblocks.UIBlocks, view ...int) ProgressBase[T] {
-	return ProgressBase[T]{ElemBase: NewElemBase[T](self, b.NewBlock(general.OptionalDefaulted(1, view...)).SetPayload(self))}
+func NewProgressBase[T ProgressElement](self T, b *uiblocks.UIBlocks, opts ProgressBaseOptions) ProgressBase[T] {
+	if opts.View == 0 {
+		opts.View = 1
+	}
+	return ProgressBase[T]{ElemBase: NewElemBase[T](self, b.NewBlock(opts.View).SetPayload(self), opts.BaseOptions)}
 }
 
 func (b *ProgressBase[T]) SetFinal(m string) T {
@@ -103,45 +193,13 @@ func (b *ProgressBase[T]) PrependElapsed(offset ...int) T {
 	return b.self
 }
 
-func (b *ProgressBase[T]) Start() {
-	b.Lock.Lock()
-	b.start()
-	b.Lock.Unlock()
-	b.self.Flush()
-}
-
-func (b *ProgressBase[T]) start() {
-	var t time.Time
-
-	if b.timeStarted == t {
-		b.timeStarted = time.Now()
-	}
-}
-
-// TimeElapsed returns the time elapsed
-func (b *ProgressBase[T]) TimeElapsed() time.Duration {
-	b.Lock.RLock()
-	defer b.Lock.RUnlock()
-
-	return time.Since(b.timeStarted)
-}
-
-func PrettyTime(t time.Duration) string {
-	if t == 0 {
-		return ""
-	}
-	return units.Seconds(int(t.Truncate(time.Second) / time.Second))
-}
-
-// TimeElapsedString returns the formatted string represenation of the time elapsed
-func (b *ProgressBase[T]) TimeElapsedString() string {
-	return PrettyTime(b.TimeElapsed())
-}
-
 func (b *ProgressBase[T]) Line() (string, bool) {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
+	return b.line()
+}
 
+func (b *ProgressBase[T]) line() (string, bool) {
 	var buf bytes.Buffer
 
 	sep := false
@@ -176,17 +234,20 @@ func (b *ProgressBase[T]) Line() (string, bool) {
 	return buf.String(), done
 }
 
-func (b *ProgressBase[T]) Flush() error {
+func (b *ProgressBase[T]) Update() bool {
 	line, done := b.Line()
 
 	b.block.Reset()
-	_, err := b.block.Write([]byte(line + "\n"))
-
-	err = b.block.Flush()
+	b.block.Write([]byte(line + "\n"))
 	if done {
-		b.block.Close()
+		b.Close()
 	}
-	return err
+	return true
+}
+
+func (b *ProgressBase[T]) Flush() error {
+	b.self.Update()
+	return b.block.Flush()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
