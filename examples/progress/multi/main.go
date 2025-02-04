@@ -18,7 +18,8 @@ func main() {
 		w := uiprogress.NewBar(p, total).
 			SetFinal(fmt.Sprintf("Finished: Downloaded %d GB", total)).
 			AppendFunc(uiprogress.Amount(units.Plain)).
-			AppendFunc(uiprogress.Message("GB"))
+			AppendFunc(uiprogress.Message("GB")).
+			PrependFunc(uiprogress.Message("Downloading ..."))
 
 		go func() {
 			done := 0
