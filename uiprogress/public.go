@@ -1,14 +1,14 @@
-package ppi
+package uiprogress
 
 import (
 	"io"
 	"time"
+
+	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
-type Element = BaseInterface
-
 // DecoratorFunc is a function that can be prepended and appended to the progress bar
-type DecoratorFunc func(b Element) string
+type DecoratorFunc = ppi.DecoratorFunc
 
 // BaseInterface is the common interface of all
 // elements provided by the uiprogress package

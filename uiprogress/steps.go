@@ -1,4 +1,4 @@
-package ppi
+package uiprogress
 
 import (
 	"github.com/mandelsoft/jobscheduler/strutils"

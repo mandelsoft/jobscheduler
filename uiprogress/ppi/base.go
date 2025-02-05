@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mandelsoft/goutils/generics"
 	"github.com/mandelsoft/jobscheduler/strutils"
 	"github.com/mandelsoft/jobscheduler/uiblocks"
 	"github.com/mandelsoft/jobscheduler/units"
@@ -17,10 +16,12 @@ type BaseElement interface {
 	Update() bool
 }
 
-type ElemBase[T BaseElement] struct {
+type ElemBase[T BaseInterface, I BaseElement] struct {
 	Lock sync.RWMutex
 
-	self   T
+	self T
+	impl I
+
 	block  *uiblocks.Block
 	closer func()
 
@@ -31,18 +32,18 @@ type ElemBase[T BaseElement] struct {
 	closed bool
 }
 
-func NewElemBase[T BaseElement](self T, b *uiblocks.UIBlocks, view int, closer func()) ElemBase[T] {
+func NewElemBase[T BaseInterface, I BaseElement](self T, impl I, b *uiblocks.UIBlocks, view int, closer func()) ElemBase[T, I] {
 	if view <= 0 {
 		view = 1
 	}
-	return ElemBase[T]{self: self, block: b.NewBlock(view).SetPayload(self), closer: closer}
+	return ElemBase[T, I]{self: self, impl: impl, block: b.NewBlock(view).SetPayload(self), closer: closer}
 }
 
-func (b *ElemBase[T]) UIBlock() *uiblocks.Block {
+func (b *ElemBase[T, I]) UIBlock() *uiblocks.Block {
 	return b.block
 }
 
-func (b *ElemBase[T]) Start() {
+func (b *ElemBase[T, I]) Start() {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 
@@ -56,7 +57,7 @@ func (b *ElemBase[T]) Start() {
 	}
 }
 
-func (b *ElemBase[T]) IsStarted() bool {
+func (b *ElemBase[T, I]) IsStarted() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -64,11 +65,11 @@ func (b *ElemBase[T]) IsStarted() bool {
 	return b.timeStarted != t
 }
 
-func (b *ElemBase[T]) Close() error {
+func (b *ElemBase[T, I]) Close() error {
 	err := b.close()
 
 	if err == nil {
-		b.self.Update()
+		b.impl.Update()
 		if b.closer != nil {
 			b.closer()
 		}
@@ -77,7 +78,7 @@ func (b *ElemBase[T]) Close() error {
 	return err
 }
 
-func (b *ElemBase[T]) close() error {
+func (b *ElemBase[T, I]) close() error {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 
@@ -89,7 +90,7 @@ func (b *ElemBase[T]) close() error {
 	return nil
 }
 
-func (b *ElemBase[T]) IsClosed() bool {
+func (b *ElemBase[T, I]) IsClosed() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -97,7 +98,7 @@ func (b *ElemBase[T]) IsClosed() bool {
 }
 
 // TimeElapsed returns the time elapsed
-func (b *ElemBase[T]) TimeElapsed() time.Duration {
+func (b *ElemBase[T, I]) TimeElapsed() time.Duration {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -115,7 +116,7 @@ func PrettyTime(t time.Duration) string {
 }
 
 // TimeElapsedString returns the formatted string representation of the time elapsed
-func (b *ElemBase[T]) TimeElapsedString() string {
+func (b *ElemBase[T, I]) TimeElapsedString() string {
 	return PrettyTime(b.TimeElapsed())
 }
 
@@ -124,37 +125,29 @@ func (b *ElemBase[T]) TimeElapsedString() string {
 // ProgressElement in the (protected) implementation interface.
 type ProgressElement interface {
 	BaseElement
-	Start()
-	IsClosed() bool
 	Visualize() (string, bool)
-}
-
-// ProgressImplementation in the complete implementation interface.
-type ProgressImplementation[P ProgressInterface[P]] interface {
-	ProgressInterface[P]
-	ProgressElement
 }
 
 // ProgressBase is a base implementation for elements providing
 // a line for progress information.
-type ProgressBase[P ProgressInterface[P], T ProgressImplementation[P]] struct {
-	ElemBase[T]
+type ProgressBase[T ProgressInterface[T]] struct {
+	ElemBase[T, ProgressElement]
 
 	appendFuncs  []DecoratorFunc
 	prependFuncs []DecoratorFunc
 }
 
-func NewProgressBase[P ProgressInterface[P], T ProgressImplementation[P]](self T, b *uiblocks.UIBlocks, view int, closer func()) ProgressBase[P, T] {
-	return ProgressBase[P, T]{ElemBase: NewElemBase[T](self, b, view, closer)}
+func NewProgressBase[T ProgressInterface[T]](self T, impl ProgressElement, b *uiblocks.UIBlocks, view int, closer func()) ProgressBase[T] {
+	return ProgressBase[T]{ElemBase: NewElemBase[T](self, impl, b, view, closer)}
 }
 
-func (b *ProgressBase[P, T]) SetFinal(m string) P {
+func (b *ProgressBase[T]) SetFinal(m string) T {
 	b.block.SetFinal(m)
-	return generics.Cast[P](b.self)
+	return b.self
 }
 
 // AppendFunc runs the decorator function and renders the output on the right of the progress bar
-func (b *ProgressBase[P, T]) AppendFunc(f DecoratorFunc, offset ...int) P {
+func (b *ProgressBase[T]) AppendFunc(f DecoratorFunc, offset ...int) T {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	if len(offset) == 0 {
@@ -162,11 +155,11 @@ func (b *ProgressBase[P, T]) AppendFunc(f DecoratorFunc, offset ...int) P {
 	} else {
 		b.appendFuncs = slices.Insert(b.appendFuncs, offset[0], f)
 	}
-	return generics.Cast[P](b.self)
+	return b.self
 }
 
 // PrependFunc runs decorator function and render the output left the progress bar
-func (b *ProgressBase[P, T]) PrependFunc(f DecoratorFunc, offset ...int) P {
+func (b *ProgressBase[T]) PrependFunc(f DecoratorFunc, offset ...int) T {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	if len(offset) == 0 {
@@ -174,26 +167,26 @@ func (b *ProgressBase[P, T]) PrependFunc(f DecoratorFunc, offset ...int) P {
 	} else {
 		b.prependFuncs = slices.Insert(b.prependFuncs, offset[0], f)
 	}
-	return generics.Cast[P](b.self)
+	return b.self
 }
 
 // AppendElapsed appends the time elapsed the be progress bar
-func (b *ProgressBase[P, T]) AppendElapsed(offset ...int) P {
+func (b *ProgressBase[T]) AppendElapsed(offset ...int) T {
 	b.AppendFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
-	return generics.Cast[P](b.self)
+	return b.self
 }
 
 // PrependElapsed prepends the time elapsed to the begining of the bar
-func (b *ProgressBase[P, T]) PrependElapsed(offset ...int) P {
+func (b *ProgressBase[T]) PrependElapsed(offset ...int) T {
 	b.PrependFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
-	return generics.Cast[P](b.self)
+	return b.self
 }
 
-func (b *ProgressBase[P, T]) Line() (string, bool) {
+func (b *ProgressBase[T]) Line() (string, bool) {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -209,7 +202,7 @@ func (b *ProgressBase[P, T]) Line() (string, bool) {
 		sep = true
 	}
 
-	data, done := b.self.Visualize()
+	data, done := b.impl.Visualize()
 	// render main function
 	if len(data) > 0 {
 		if sep {
@@ -230,7 +223,7 @@ func (b *ProgressBase[P, T]) Line() (string, bool) {
 	return buf.String(), done
 }
 
-func (b *ProgressBase[P, T]) Update() bool {
+func Update[T ProgressInterface[T]](b *ProgressBase[T]) bool {
 	line, done := b.Line()
 
 	b.block.Reset()
@@ -241,7 +234,7 @@ func (b *ProgressBase[P, T]) Update() bool {
 	return true
 }
 
-func (b *ProgressBase[P, T]) Flush() error {
-	b.self.Update()
+func (b *ProgressBase[T]) Flush() error {
+	b.impl.Update()
 	return b.block.Flush()
 }

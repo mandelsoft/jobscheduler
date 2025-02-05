@@ -1,12 +1,12 @@
-package ppi
+package uiprogress
 
 import (
 	"maps"
 	"sync"
 
 	"github.com/briandowns/spinner"
-	"github.com/mandelsoft/goutils/generics"
 	"github.com/mandelsoft/jobscheduler/strutils"
+	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
 var Done = "done"
@@ -25,9 +25,11 @@ func init() {
 
 var Speed = 2
 
-type RawSpinner[P ProgressInterface[P], T ProgressImplementation[P]] struct {
-	lock    sync.Mutex
-	self    T
+type RawSpinner[P ProgressInterface[P]] struct {
+	lock sync.Mutex
+	self P
+	impl ppi.ProgressElement
+
 	charset []string
 	speed   int
 	done    string
@@ -36,34 +38,35 @@ type RawSpinner[P ProgressInterface[P], T ProgressImplementation[P]] struct {
 	phase int
 }
 
-func NewRawSpinner[P ProgressInterface[P], T ProgressImplementation[P]](self T, set int) RawSpinner[P, T] {
+func NewRawSpinner[T ProgressInterface[T]](self T, impl ppi.ProgressElement, set int) RawSpinner[T] {
 	if set < 0 || SpinnerTypes[set] == nil {
 		set = 9
 	}
-	return RawSpinner[P, T]{
+	return RawSpinner[T]{
 		self:    self,
+		impl:    impl,
 		charset: SpinnerTypes[set],
 		speed:   Speed,
 		done:    Done,
 	}
 }
 
-func (s *RawSpinner[P, T]) SetSpeed(v int) P {
+func (s *RawSpinner[T]) SetSpeed(v int) T {
 	s.speed = v
-	return generics.Cast[P](s.self)
+	return s.self
 }
 
-func (s *RawSpinner[P, T]) SetDone(m string) P {
+func (s *RawSpinner[T]) SetDone(m string) T {
 	s.done = m
-	return generics.Cast[P](s.self)
+	return s.self
 }
 
-func (s *RawSpinner[P, T]) SetPhases(phases ...string) P {
+func (s *RawSpinner[T]) SetPhases(phases ...string) T {
 	s.charset = strutils.AlignLeft(phases, ' ')
-	return generics.Cast[P](s.self)
+	return s.self
 }
 
-func (s *RawSpinner[P, T]) Visualize() (string, bool) {
+func Visualize[T ProgressInterface[T]](s *RawSpinner[T]) (string, bool) {
 	if s.self.IsClosed() {
 		return s.done, true
 	}
@@ -73,7 +76,7 @@ func (s *RawSpinner[P, T]) Visualize() (string, bool) {
 	return s.charset[s.phase], false
 }
 
-func (s *RawSpinner[P, T]) Tick() bool {
+func (s *RawSpinner[T]) Tick() bool {
 	if s.self.IsClosed() {
 		return false
 	}
@@ -88,39 +91,5 @@ func (s *RawSpinner[P, T]) Tick() bool {
 	s.cnt = 0
 	s.phase = (s.phase + 1) % len(s.charset)
 	s.lock.Unlock()
-	return s.self.Update()
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-// Spinner provides one line of unlimited progress information.
-type Spinner interface {
-	ProgressInterface[Spinner]
-	SetSpeed(int) Spinner
-}
-
-type spinnerImpl struct {
-	ProgressBase[Spinner, *spinnerImpl]
-	RawSpinner[Spinner, *spinnerImpl]
-	closed bool
-}
-
-// NewSpinner creates a Spinner with a predefined
-// set of spinner phases taken from SpinnerTypes.
-func NewSpinner(p Progress, set int) Spinner {
-	b := &spinnerImpl{}
-	b.RawSpinner = NewRawSpinner[Spinner](b, set)
-	b.ProgressBase = NewProgressBase[Spinner](b, p.UIBlocks(), 1, nil)
-	return b
-}
-
-func (s *spinnerImpl) finalize() {
-	s.Update()
-}
-
-func (s *spinnerImpl) Visualize() (string, bool) {
-	if s.self.IsClosed() {
-		return "done", true
-	}
-	return s.RawSpinner.Visualize()
+	return s.impl.Update()
 }

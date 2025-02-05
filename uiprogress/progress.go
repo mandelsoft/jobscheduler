@@ -1,4 +1,4 @@
-package ppi
+package uiprogress
 
 import (
 	"context"
@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
-type Element interface {
-}
+type Element = ppi.Element
 
 type Ticker interface {
 	Tick() bool

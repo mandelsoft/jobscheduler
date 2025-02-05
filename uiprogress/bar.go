@@ -1,9 +1,11 @@
-package ppi
+package uiprogress
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+
+	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
 var (
@@ -76,9 +78,9 @@ type Bar interface {
 	IsClosed() bool
 }
 
-// barImpl represents a progress bar
-type barImpl struct {
-	ProgressBase[Bar, *barImpl]
+// _Bar represents a progress bar
+type _Bar struct {
+	ppi.ProgressBase[Bar]
 
 	// total of the total  for the progress bar.
 	total int
@@ -104,12 +106,21 @@ type barImpl struct {
 	current int
 }
 
-// DecoratorFunc is a function that can be prepended and appended to the progress bar
-type DecoratorFunc func(b Element) string
+type _barProtected struct {
+	*_Bar
+}
+
+func (b *_barProtected) Update() bool {
+	return b._update()
+}
+
+func (b *_barProtected) Visualize() (string, bool) {
+	return b._visualize()
+}
 
 // NewBar returns a new progress bar
 func NewBar(p Progress, total int) Bar {
-	b := &barImpl{
+	b := &_Bar{
 		total:    total,
 		width:    Width,
 		leftEnd:  LeftEnd,
@@ -118,22 +129,22 @@ func NewBar(p Progress, total int) Bar {
 		fill:     Fill,
 		empty:    Empty,
 	}
-	b.ProgressBase = NewProgressBase[Bar](b, p.UIBlocks(), 1, nil)
+	b.ProgressBase = ppi.NewProgressBase[Bar](b, &_barProtected{b}, p.UIBlocks(), 1, nil)
 	return b
 }
 
 // AppendCompleted appends the completion percent to the progress bar
-func (b *barImpl) AppendCompleted(offset ...int) Bar {
+func (b *_Bar) AppendCompleted(offset ...int) Bar {
 	b.AppendFunc(func(b Element) string {
-		return b.(*barImpl).CompletedPercentString()
+		return b.(*_Bar).CompletedPercentString()
 	}, offset...)
 	return b
 }
 
 // PrependCompleted prepends the precent completed to the progress bar
-func (b *barImpl) PrependCompleted(offset ...int) Bar {
+func (b *_Bar) PrependCompleted(offset ...int) Bar {
 	b.PrependFunc(func(b Element) string {
-		return b.(*barImpl).CompletedPercentString()
+		return b.(*_Bar).CompletedPercentString()
 	}, offset...)
 	return b
 }
@@ -142,38 +153,38 @@ func (b *barImpl) PrependCompleted(offset ...int) Bar {
 
 // SetWidth sets the progress visualization width.
 // The value 0 disables the visualization.
-func (b *barImpl) SetWidth(n uint) Bar {
+func (b *_Bar) SetWidth(n uint) Bar {
 	b.width = n
 	return b
 }
 
-func (b *barImpl) SetHead(c byte) Bar {
+func (b *_Bar) SetHead(c byte) Bar {
 	b.head = c
 	return b
 }
 
-func (b *barImpl) SetEmpty(c byte) Bar {
+func (b *_Bar) SetEmpty(c byte) Bar {
 	b.empty = c
 	return b
 }
 
-func (b *barImpl) SetFill(c byte) Bar {
+func (b *_Bar) SetFill(c byte) Bar {
 	b.fill = c
 	return b
 }
 
-func (b *barImpl) SetLeftEnd(c byte) Bar {
+func (b *_Bar) SetLeftEnd(c byte) Bar {
 	b.leftEnd = c
 	return b
 }
 
-func (b *barImpl) SetRightEnd(c byte) Bar {
+func (b *_Bar) SetRightEnd(c byte) Bar {
 	b.rightEnd = c
 	return b
 }
 
 // Set the current count of the bar. It returns ErrMaxCurrentReached when trying n exceeds the total value. This is atomic operation and concurrency safe.
-func (b *barImpl) Set(n int) bool {
+func (b *_Bar) Set(n int) bool {
 	b.Start()
 
 	b.Lock.Lock()
@@ -191,7 +202,7 @@ func (b *barImpl) Set(n int) bool {
 }
 
 // Incr increments the current value by 1, time elapsed to current time and returns true. It returns false if the cursor has reached or exceeds total value.
-func (b *barImpl) Incr() bool {
+func (b *_Bar) Incr() bool {
 	b.Start()
 	if b.incr() {
 		if b.isFinished() {
@@ -204,13 +215,13 @@ func (b *barImpl) Incr() bool {
 	return false
 }
 
-func (b *barImpl) isFinished() bool {
+func (b *_Bar) isFinished() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.current == b.total
 }
 
-func (b *barImpl) incr() bool {
+func (b *_Bar) incr() bool {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 
@@ -224,20 +235,24 @@ func (b *barImpl) incr() bool {
 }
 
 // Current returns the current progress of the bar
-func (b *barImpl) Current() int {
+func (b *_Bar) Current() int {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.current
 }
 
 // Total returns the expected goal.
-func (b *barImpl) Total() int {
+func (b *_Bar) Total() int {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.total
 }
 
-func (b *barImpl) Visualize() (string, bool) {
+func (b *_Bar) _update() bool {
+	return ppi.Update[Bar](&b.ProgressBase)
+}
+
+func (b *_Bar) _visualize() (string, bool) {
 	var buf bytes.Buffer
 
 	// render visualization
@@ -267,12 +282,12 @@ func (b *barImpl) Visualize() (string, bool) {
 }
 
 // CompletedPercent return the percent completed
-func (b *barImpl) CompletedPercent() float64 {
+func (b *_Bar) CompletedPercent() float64 {
 	return (float64(b.Current()) / float64(b.total)) * 100.00
 }
 
 // CompletedPercentString returns the formatted string representation of the completed percent
-func (b *barImpl) CompletedPercentString() string {
+func (b *_Bar) CompletedPercentString() string {
 	return fmt.Sprintf("%3.f%%", b.CompletedPercent())
 }
 
