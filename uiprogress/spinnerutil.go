@@ -27,8 +27,7 @@ var Speed = 2
 
 type RawSpinner[P ProgressInterface[P]] struct {
 	lock sync.Mutex
-	self P
-	impl ppi.ProgressElement
+	self ppi.Self[P, ppi.ProgressProtected]
 
 	charset []string
 	speed   int
@@ -38,13 +37,12 @@ type RawSpinner[P ProgressInterface[P]] struct {
 	phase int
 }
 
-func NewRawSpinner[T ProgressInterface[T]](self T, impl ppi.ProgressElement, set int) RawSpinner[T] {
+func NewRawSpinner[T ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtected], set int) RawSpinner[T] {
 	if set < 0 || SpinnerTypes[set] == nil {
 		set = 9
 	}
 	return RawSpinner[T]{
 		self:    self,
-		impl:    impl,
 		charset: SpinnerTypes[set],
 		speed:   Speed,
 		done:    Done,
@@ -53,34 +51,34 @@ func NewRawSpinner[T ProgressInterface[T]](self T, impl ppi.ProgressElement, set
 
 func (s *RawSpinner[T]) SetSpeed(v int) T {
 	s.speed = v
-	return s.self
+	return s.self.Self
 }
 
 func (s *RawSpinner[T]) SetDone(m string) T {
 	s.done = m
-	return s.self
+	return s.self.Self
 }
 
 func (s *RawSpinner[T]) SetPhases(phases ...string) T {
 	s.charset = strutils.AlignLeft(phases, ' ')
-	return s.self
+	return s.self.Self
 }
 
 func Visualize[T ProgressInterface[T]](s *RawSpinner[T]) (string, bool) {
-	if s.self.IsClosed() {
+	if s.self.Self.IsClosed() {
 		return s.done, true
 	}
-	if !s.self.IsStarted() {
+	if !s.self.Self.IsStarted() {
 		return "", false
 	}
 	return s.charset[s.phase], false
 }
 
 func (s *RawSpinner[T]) Tick() bool {
-	if s.self.IsClosed() {
+	if s.self.Self.IsClosed() {
 		return false
 	}
-	s.self.Start()
+	s.self.Self.Start()
 	s.lock.Lock()
 
 	s.cnt++
@@ -91,5 +89,5 @@ func (s *RawSpinner[T]) Tick() bool {
 	s.cnt = 0
 	s.phase = (s.phase + 1) % len(s.charset)
 	s.lock.Unlock()
-	return s.impl.Update()
+	return s.self.Protected.Update()
 }

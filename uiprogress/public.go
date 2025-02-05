@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
@@ -42,6 +43,9 @@ type ProgressInterface[T any] interface {
 	// SetFinal sets a text message shown instead of the
 	// text window after the action has been finished.
 	SetFinal(m string) T
+
+	// SetColor sets a color for the progress indicator.
+	SetColor(color *color.Color) T
 
 	// AppendFunc adds a function providing some text appended
 	// to the basic progress indicator.

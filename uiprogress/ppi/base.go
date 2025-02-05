@@ -7,20 +7,29 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/mandelsoft/jobscheduler/strutils"
 	"github.com/mandelsoft/jobscheduler/uiblocks"
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
-type BaseElement interface {
+type Self[I, P any] struct {
+	Self      I
+	Protected P
+}
+
+type BaseProtected interface {
 	Update() bool
 }
 
-type ElemBase[T BaseInterface, I BaseElement] struct {
+func BaseSelf[I BaseInterface, P BaseProtected](b I, impl P) Self[I, P] {
+	return Self[I, P]{b, impl}
+}
+
+type ElemBase[T BaseInterface, I BaseProtected] struct {
 	Lock sync.RWMutex
 
-	self T
-	impl I
+	self Self[T, I]
 
 	block  *uiblocks.Block
 	closer func()
@@ -32,11 +41,11 @@ type ElemBase[T BaseInterface, I BaseElement] struct {
 	closed bool
 }
 
-func NewElemBase[T BaseInterface, I BaseElement](self T, impl I, b *uiblocks.UIBlocks, view int, closer func()) ElemBase[T, I] {
+func NewElemBase[T BaseInterface, I BaseProtected](self Self[T, I], b *uiblocks.UIBlocks, view int, closer func()) ElemBase[T, I] {
 	if view <= 0 {
 		view = 1
 	}
-	return ElemBase[T, I]{self: self, impl: impl, block: b.NewBlock(view).SetPayload(self), closer: closer}
+	return ElemBase[T, I]{self: self, block: b.NewBlock(view).SetPayload(self.Self), closer: closer}
 }
 
 func (b *ElemBase[T, I]) UIBlock() *uiblocks.Block {
@@ -69,7 +78,7 @@ func (b *ElemBase[T, I]) Close() error {
 	err := b.close()
 
 	if err == nil {
-		b.impl.Update()
+		b.self.Protected.Update()
 		if b.closer != nil {
 			b.closer()
 		}
@@ -122,28 +131,34 @@ func (b *ElemBase[T, I]) TimeElapsedString() string {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// ProgressElement in the (protected) implementation interface.
-type ProgressElement interface {
-	BaseElement
+// ProgressProtected in the (protected) implementation interface.
+type ProgressProtected interface {
+	BaseProtected
 	Visualize() (string, bool)
+}
+
+func ProgressSelf[I ProgressInterface[I]](b I, impl ProgressProtected) Self[I, ProgressProtected] {
+	return Self[I, ProgressProtected]{b, impl}
 }
 
 // ProgressBase is a base implementation for elements providing
 // a line for progress information.
 type ProgressBase[T ProgressInterface[T]] struct {
-	ElemBase[T, ProgressElement]
+	ElemBase[T, ProgressProtected]
+
+	color *color.Color
 
 	appendFuncs  []DecoratorFunc
 	prependFuncs []DecoratorFunc
 }
 
-func NewProgressBase[T ProgressInterface[T]](self T, impl ProgressElement, b *uiblocks.UIBlocks, view int, closer func()) ProgressBase[T] {
-	return ProgressBase[T]{ElemBase: NewElemBase[T](self, impl, b, view, closer)}
+func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected], b *uiblocks.UIBlocks, view int, closer func()) ProgressBase[T] {
+	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected](self, b, view, closer)}
 }
 
 func (b *ProgressBase[T]) SetFinal(m string) T {
 	b.block.SetFinal(m)
-	return b.self
+	return b.self.Self
 }
 
 // AppendFunc runs the decorator function and renders the output on the right of the progress bar
@@ -155,7 +170,7 @@ func (b *ProgressBase[T]) AppendFunc(f DecoratorFunc, offset ...int) T {
 	} else {
 		b.appendFuncs = slices.Insert(b.appendFuncs, offset[0], f)
 	}
-	return b.self
+	return b.self.Self
 }
 
 // PrependFunc runs decorator function and render the output left the progress bar
@@ -167,7 +182,13 @@ func (b *ProgressBase[T]) PrependFunc(f DecoratorFunc, offset ...int) T {
 	} else {
 		b.prependFuncs = slices.Insert(b.prependFuncs, offset[0], f)
 	}
-	return b.self
+	return b.self.Self
+}
+
+// SetColor appends the time elapsed the be progress bar
+func (b *ProgressBase[T]) SetColor(col *color.Color) T {
+	b.color = col
+	return b.self.Self
 }
 
 // AppendElapsed appends the time elapsed the be progress bar
@@ -175,7 +196,7 @@ func (b *ProgressBase[T]) AppendElapsed(offset ...int) T {
 	b.AppendFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
-	return b.self
+	return b.self.Self
 }
 
 // PrependElapsed prepends the time elapsed to the begining of the bar
@@ -183,7 +204,7 @@ func (b *ProgressBase[T]) PrependElapsed(offset ...int) T {
 	b.PrependFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
-	return b.self
+	return b.self.Self
 }
 
 func (b *ProgressBase[T]) Line() (string, bool) {
@@ -198,11 +219,11 @@ func (b *ProgressBase[T]) Line() (string, bool) {
 		if sep {
 			buf.WriteByte(' ')
 		}
-		buf.Write([]byte(f(b.self)))
+		buf.Write([]byte(f(b.self.Self)))
 		sep = true
 	}
 
-	data, done := b.impl.Visualize()
+	data, done := b.self.Protected.Visualize()
 	// render main function
 	if len(data) > 0 {
 		if sep {
@@ -217,8 +238,12 @@ func (b *ProgressBase[T]) Line() (string, bool) {
 		if sep {
 			buf.WriteByte(' ')
 		}
-		buf.Write([]byte(f(b.self)))
+		buf.Write([]byte(f(b.self.Self)))
 		sep = true
+	}
+
+	if b.color != nil {
+		return b.color.Sprint(buf.String()), done
 	}
 	return buf.String(), done
 }
@@ -235,6 +260,6 @@ func Update[T ProgressInterface[T]](b *ProgressBase[T]) bool {
 }
 
 func (b *ProgressBase[T]) Flush() error {
-	b.impl.Update()
+	b.self.Protected.Update()
 	return b.block.Flush()
 }

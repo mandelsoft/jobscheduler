@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/mandelsoft/goutils/general"
-	ppi2 "github.com/mandelsoft/jobscheduler/uiprogress/ppi"
+	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
 // Text provides a tail window of output
@@ -13,7 +13,7 @@ import (
 // The element can be used as writer to pass the
 // intended output.
 type Text interface {
-	ppi2.BaseInterface
+	ppi.BaseInterface
 
 	// SetFinal sets a text message shown instead of the
 	// text window after the action has been finished.
@@ -31,7 +31,7 @@ type Text interface {
 }
 
 type _text struct {
-	ppi2.ElemBase[Text, ppi2.BaseElement]
+	ppi.ElemBase[Text, ppi.BaseProtected]
 }
 
 type _textProtected struct {
@@ -47,9 +47,9 @@ func (t *_textProtected) Update() bool {
 // Otherwise, Text.Flush must be called to update the text window.
 func NewText(p Progress, view ...int) Text {
 	t := &_text{}
-	impl := &_textProtected{t}
 
-	t.ElemBase = ppi2.NewElemBase[Text, ppi2.BaseElement](t, impl, p.UIBlocks(), general.OptionalDefaulted(3, view...), nil)
+	self := ppi.Self[Text, ppi.BaseProtected]{t, &_textProtected{t}}
+	t.ElemBase = ppi.NewElemBase[Text, ppi.BaseProtected](self, p.UIBlocks(), general.OptionalDefaulted(3, view...), nil)
 	return t
 }
 

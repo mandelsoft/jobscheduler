@@ -129,7 +129,8 @@ func NewBar(p Progress, total int) Bar {
 		fill:     Fill,
 		empty:    Empty,
 	}
-	b.ProgressBase = ppi.NewProgressBase[Bar](b, &_barProtected{b}, p.UIBlocks(), 1, nil)
+	self := ppi.ProgressSelf[Bar](b, &_barProtected{b})
+	b.ProgressBase = ppi.NewProgressBase[Bar](self, p.UIBlocks(), 1, nil)
 	return b
 }
 

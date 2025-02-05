@@ -32,9 +32,9 @@ func (s *_spinnerProtected) Visualize() (string, bool) {
 // set of spinner phases taken from SpinnerTypes.
 func NewSpinner(p Progress, set int) Spinner {
 	b := &_Spinner{}
-	impl := &_spinnerProtected{b}
-	b.RawSpinner = NewRawSpinner[Spinner](b, impl, set)
-	b.ProgressBase = ppi.NewProgressBase[Spinner](b, impl, p.UIBlocks(), 1, nil)
+	self := ppi.Self[Spinner, ppi.ProgressProtected]{b, &_spinnerProtected{b}}
+	b.RawSpinner = NewRawSpinner[Spinner](self, set)
+	b.ProgressBase = ppi.NewProgressBase[Spinner](self, p.UIBlocks(), 1, nil)
 	return b
 }
 
@@ -47,7 +47,7 @@ func (s *_Spinner) _update() bool {
 }
 
 func (s *_Spinner) _visualize() (string, bool) {
-	if s.self.IsClosed() {
+	if s.self.Self.IsClosed() {
 		return "done", true
 	}
 	return Visualize(&s.RawSpinner)

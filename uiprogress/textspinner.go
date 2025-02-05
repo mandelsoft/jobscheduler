@@ -43,9 +43,10 @@ func (t *_textSpinnerProtected) Visualize() (string, bool) {
 // window size. It can be used like a Text element.
 func NewTextSpinner(p Progress, set int, view ...int) TextSpinner {
 	b := &_TextSpinner{}
-	impl := &_textSpinnerProtected{b}
-	b.RawSpinner = NewRawSpinner[TextSpinner](b, impl, set)
-	b.ProgressBase = ppi.NewProgressBase[TextSpinner](b, impl, p.UIBlocks(), general.OptionalDefaulted(3, view...), nil)
+	self := ppi.Self[TextSpinner, ppi.ProgressProtected]{b, &_textSpinnerProtected{b}}
+
+	b.RawSpinner = NewRawSpinner[TextSpinner](self, set)
+	b.ProgressBase = ppi.NewProgressBase[TextSpinner](self, p.UIBlocks(), general.OptionalDefaulted(3, view...), nil)
 	b.SetSpeed(4)
 	b.UIBlock().SetAuto()
 	return b
