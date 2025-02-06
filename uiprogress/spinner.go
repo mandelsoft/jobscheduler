@@ -20,6 +20,10 @@ type _spinnerProtected struct {
 	*_Spinner
 }
 
+func (s *_spinnerProtected) Self() Spinner {
+	return s._Spinner
+}
+
 func (s *_spinnerProtected) Update() bool {
 	return s._update()
 }
@@ -32,7 +36,8 @@ func (s *_spinnerProtected) Visualize() (string, bool) {
 // set of spinner phases taken from SpinnerTypes.
 func NewSpinner(p Container, set int) Spinner {
 	b := &_Spinner{}
-	self := ppi.Self[Spinner, ppi.ProgressProtected]{b, &_spinnerProtected{b}}
+
+	self := ppi.ProgressSelf[Spinner](&_spinnerProtected{b})
 	b.RawSpinner = NewRawSpinner[Spinner](self, set)
 	b.ProgressBase = ppi.NewProgressBase[Spinner](self, p, 1, nil)
 	return b
@@ -47,7 +52,7 @@ func (s *_Spinner) _update() bool {
 }
 
 func (s *_Spinner) _visualize() (string, bool) {
-	if s.self.Self.IsClosed() {
+	if s.self.Self().IsClosed() {
 		return "done", true
 	}
 	return Visualize(&s.RawSpinner)

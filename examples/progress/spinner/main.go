@@ -25,7 +25,6 @@ func main() {
 			SetSpeed(1).SetColor(cols[i]).
 			PrependFunc(uiprogress.Message(fmt.Sprintf("working on %d ...", i+1))).
 			AppendElapsed()
-
 		go func() {
 			time.Sleep(time.Second * time.Duration(10+rand.Int()%20))
 			bar.Close()

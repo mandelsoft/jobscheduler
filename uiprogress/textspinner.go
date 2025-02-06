@@ -36,6 +36,10 @@ type _textSpinnerProtected struct {
 	*_TextSpinner
 }
 
+func (t *_textSpinnerProtected) Self() TextSpinner {
+	return t._TextSpinner
+}
+
 func (t *_textSpinnerProtected) Update() bool {
 	return t._update()
 }
@@ -48,7 +52,7 @@ func (t *_textSpinnerProtected) Visualize() (string, bool) {
 // window size. It can be used like a Text element.
 func NewTextSpinner(p Container, set int, view ...int) TextSpinner {
 	b := &_TextSpinner{}
-	self := ppi.Self[TextSpinner, ppi.ProgressProtected]{b, &_textSpinnerProtected{b}}
+	self := ppi.ProgressSelf[TextSpinner](&_textSpinnerProtected{b})
 
 	b.RawSpinner = NewRawSpinner[TextSpinner](self, set)
 	b.ProgressBase = ppi.NewProgressBase[TextSpinner](self, p, general.OptionalDefaulted(3, view...), nil)

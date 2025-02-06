@@ -110,6 +110,10 @@ type _barProtected struct {
 	*_Bar
 }
 
+func (b *_barProtected) Self() Bar {
+	return b._Bar
+}
+
 func (b *_barProtected) Update() bool {
 	return b._update()
 }
@@ -129,7 +133,7 @@ func NewBar(p Container, total int) Bar {
 		fill:     Fill,
 		empty:    Empty,
 	}
-	self := ppi.ProgressSelf[Bar](b, &_barProtected{b})
+	self := ppi.ProgressSelf[Bar](&_barProtected{b})
 	b.ProgressBase = ppi.NewProgressBase[Bar](self, p, 1, nil)
 	return b
 }

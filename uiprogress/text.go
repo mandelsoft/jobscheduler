@@ -31,11 +31,15 @@ type Text interface {
 }
 
 type _text struct {
-	ppi.ElemBase[Text, ppi.BaseProtected]
+	ppi.ElemBase[Text, *_textProtected]
 }
 
 type _textProtected struct {
 	*_text
+}
+
+func (t *_textProtected) Self() Text {
+	return t._text
 }
 
 func (t *_textProtected) Update() bool {
@@ -48,8 +52,8 @@ func (t *_textProtected) Update() bool {
 func NewText(p Container, view ...int) Text {
 	t := &_text{}
 
-	self := ppi.Self[Text, ppi.BaseProtected]{t, &_textProtected{t}}
-	t.ElemBase = ppi.NewElemBase[Text, ppi.BaseProtected](self, p, general.OptionalDefaulted(3, view...), nil)
+	self := ppi.BaseSelf[Text](&_textProtected{t})
+	t.ElemBase = ppi.NewElemBase[Text](self, p, general.OptionalDefaulted(3, view...), nil)
 	return t
 }
 

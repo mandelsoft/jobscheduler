@@ -19,23 +19,19 @@ type Container interface {
 	Wait(ctx context.Context) error
 }
 
-type Self[I, P any] struct {
-	Self      I
-	Protected P
-}
-
-type BaseProtected interface {
+type BaseProtected[I any] interface {
+	Protected[I]
 	Update() bool
 }
 
-func BaseSelf[I BaseInterface, P BaseProtected](b I, impl P) Self[I, P] {
-	return Self[I, P]{b, impl}
+func BaseSelf[I BaseInterface, P BaseProtected[I]](p P) Self[I, P] {
+	return Self[I, P]{p}
 }
 
-type ElemBase[T BaseInterface, I BaseProtected] struct {
+type ElemBase[I BaseInterface, P BaseProtected[I]] struct {
 	Lock sync.RWMutex
 
-	self Self[T, I]
+	self Self[I, P]
 
 	block  *uiblocks.UIBlock
 	closer func()
@@ -47,24 +43,24 @@ type ElemBase[T BaseInterface, I BaseProtected] struct {
 	closed bool
 }
 
-func NewElemBase[T BaseInterface, I BaseProtected](self Self[T, I], p Container, view int, closer func()) ElemBase[T, I] {
+func NewElemBase[I BaseInterface, P BaseProtected[I]](self Self[I, P], p Container, view int, closer func()) ElemBase[I, P] {
 	if view <= 0 {
 		view = 1
 	}
-	return ElemBase[T, I]{self: self, block: p.NewBlock(view).SetPayload(self.Self), closer: closer}
+	return ElemBase[I, P]{self: self, block: p.NewBlock(view).SetPayload(self.Self()), closer: closer}
 }
 
-func (b *ElemBase[T, I]) UIBlock() *uiblocks.UIBlock {
+func (b *ElemBase[I, P]) UIBlock() *uiblocks.UIBlock {
 	return b.block
 }
 
-func (b *ElemBase[T, I]) Start() {
+func (b *ElemBase[I, P]) Start() {
 	if b.start() {
-		b.self.Protected.Update()
+		b.self.Protected().Update()
 	}
 }
 
-func (b *ElemBase[T, I]) start() bool {
+func (b *ElemBase[I, P]) start() bool {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 
@@ -76,7 +72,7 @@ func (b *ElemBase[T, I]) start() bool {
 	return true
 }
 
-func (b *ElemBase[T, I]) IsStarted() bool {
+func (b *ElemBase[I, P]) IsStarted() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -84,11 +80,11 @@ func (b *ElemBase[T, I]) IsStarted() bool {
 	return b.timeStarted != t
 }
 
-func (b *ElemBase[T, I]) Close() error {
+func (b *ElemBase[I, P]) Close() error {
 	err := b.close()
 
 	if err == nil {
-		b.self.Protected.Update()
+		b.self.Protected().Update()
 		if b.closer != nil {
 			b.closer()
 		}
@@ -97,7 +93,7 @@ func (b *ElemBase[T, I]) Close() error {
 	return err
 }
 
-func (b *ElemBase[T, I]) close() error {
+func (b *ElemBase[I, P]) close() error {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 
@@ -109,7 +105,7 @@ func (b *ElemBase[T, I]) close() error {
 	return nil
 }
 
-func (b *ElemBase[T, I]) IsClosed() bool {
+func (b *ElemBase[I, P]) IsClosed() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -117,7 +113,7 @@ func (b *ElemBase[T, I]) IsClosed() bool {
 }
 
 // TimeElapsed returns the time elapsed
-func (b *ElemBase[T, I]) TimeElapsed() time.Duration {
+func (b *ElemBase[I, P]) TimeElapsed() time.Duration {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -135,26 +131,26 @@ func PrettyTime(t time.Duration) string {
 }
 
 // TimeElapsedString returns the formatted string representation of the time elapsed
-func (b *ElemBase[T, I]) TimeElapsedString() string {
+func (b *ElemBase[I, P]) TimeElapsedString() string {
 	return PrettyTime(b.TimeElapsed())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // ProgressProtected in the (protected) implementation interface.
-type ProgressProtected interface {
-	BaseProtected
+type ProgressProtected[I any] interface {
+	BaseProtected[I]
 	Visualize() (string, bool)
 }
 
-func ProgressSelf[I ProgressInterface[I]](b I, impl ProgressProtected) Self[I, ProgressProtected] {
-	return Self[I, ProgressProtected]{b, impl}
+func ProgressSelf[I ProgressInterface[I]](impl ProgressProtected[I]) Self[I, ProgressProtected[I]] {
+	return Self[I, ProgressProtected[I]]{impl}
 }
 
 // ProgressBase is a base implementation for elements providing
 // a line for progress information.
 type ProgressBase[T ProgressInterface[T]] struct {
-	ElemBase[T, ProgressProtected]
+	ElemBase[T, ProgressProtected[T]]
 
 	color *color.Color
 
@@ -162,13 +158,13 @@ type ProgressBase[T ProgressInterface[T]] struct {
 	prependFuncs []DecoratorFunc
 }
 
-func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected], p Container, view int, closer func()) ProgressBase[T] {
-	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected](self, p, view, closer)}
+func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected[T]], p Container, view int, closer func()) ProgressBase[T] {
+	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected[T]](self, p, view, closer)}
 }
 
 func (b *ProgressBase[T]) SetFinal(m string) T {
 	b.block.SetFinal(m)
-	return b.self.Self
+	return b.self.Self()
 }
 
 // AppendFunc runs the decorator function and renders the output on the right of the progress bar
@@ -180,7 +176,7 @@ func (b *ProgressBase[T]) AppendFunc(f DecoratorFunc, offset ...int) T {
 	} else {
 		b.appendFuncs = slices.Insert(b.appendFuncs, offset[0], f)
 	}
-	return b.self.Self
+	return b.self.Self()
 }
 
 // PrependFunc runs decorator function and render the output left the progress bar
@@ -192,13 +188,13 @@ func (b *ProgressBase[T]) PrependFunc(f DecoratorFunc, offset ...int) T {
 	} else {
 		b.prependFuncs = slices.Insert(b.prependFuncs, offset[0], f)
 	}
-	return b.self.Self
+	return b.self.Self()
 }
 
 // SetColor appends the time elapsed the be progress bar
 func (b *ProgressBase[T]) SetColor(col *color.Color) T {
 	b.color = col
-	return b.self.Self
+	return b.self.Self()
 }
 
 // AppendElapsed appends the time elapsed the be progress bar
@@ -206,7 +202,7 @@ func (b *ProgressBase[T]) AppendElapsed(offset ...int) T {
 	b.AppendFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
-	return b.self.Self
+	return b.self.Self()
 }
 
 // PrependElapsed prepends the time elapsed to the begining of the bar
@@ -214,7 +210,7 @@ func (b *ProgressBase[T]) PrependElapsed(offset ...int) T {
 	b.PrependFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
-	return b.self.Self
+	return b.self.Self()
 }
 
 func (b *ProgressBase[T]) Line() (string, bool) {
@@ -229,11 +225,11 @@ func (b *ProgressBase[T]) Line() (string, bool) {
 		if sep {
 			buf.WriteByte(' ')
 		}
-		buf.Write([]byte(f(b.self.Self)))
+		buf.Write([]byte(f(b.self.Self())))
 		sep = true
 	}
 
-	data, done := b.self.Protected.Visualize()
+	data, done := b.self.Protected().Visualize()
 	// render main function
 	if len(data) > 0 {
 		if sep {
@@ -248,7 +244,7 @@ func (b *ProgressBase[T]) Line() (string, bool) {
 		if sep {
 			buf.WriteByte(' ')
 		}
-		buf.Write([]byte(f(b.self.Self)))
+		buf.Write([]byte(f(b.self.Self())))
 		sep = true
 	}
 
@@ -270,6 +266,6 @@ func Update[T ProgressInterface[T]](b *ProgressBase[T]) bool {
 }
 
 func (b *ProgressBase[T]) Flush() error {
-	b.self.Protected.Update()
+	b.self.Protected().Update()
 	return b.block.Flush()
 }
