@@ -12,6 +12,8 @@ import (
 
 type Element = ppi.Element
 
+type Container = ppi.Container
+
 type Ticker interface {
 	Tick() bool
 }
@@ -32,6 +34,10 @@ type Progress interface {
 	// progress object to complete.
 	UIBlocks() *uiblocks.UIBlocks
 
+	// NewBlock adds a new uiblocks.UIBlock.
+	// If the Progress is already closed nil is returned.
+	NewBlock(view ...int) *uiblocks.UIBlock
+
 	// Done returns the done channel.
 	// A Progress is done, if it is closed and
 	// all progress elements are finished.
@@ -47,13 +53,15 @@ type Progress interface {
 	Wait(ctx context.Context) error
 }
 
-type progressImpl struct {
+type _progress struct {
 	lock   sync.Mutex
 	blocks *uiblocks.UIBlocks
 	ticker *time.Ticker
 
 	elements []Element
 }
+
+var _ Container = (*_progress)(nil)
 
 // New creates a new Progress, which manages a terminal line range
 // used to indicate progress of some actions.
@@ -63,7 +71,7 @@ type progressImpl struct {
 // the appropriate constructors. They take the Progress
 // they should be attached to as first argument.
 func New(opt ...io.Writer) Progress {
-	p := &progressImpl{
+	p := &_progress{
 		blocks: uiblocks.New(opt...),
 		ticker: time.NewTicker(time.Millisecond * 100),
 	}
@@ -71,23 +79,27 @@ func New(opt ...io.Writer) Progress {
 	return p
 }
 
-func (p *progressImpl) UIBlocks() *uiblocks.UIBlocks {
+func (p *_progress) UIBlocks() *uiblocks.UIBlocks {
 	return p.blocks
 }
 
-func (p *progressImpl) Done() <-chan struct{} {
+func (p *_progress) NewBlock(view ...int) *uiblocks.UIBlock {
+	return p.blocks.InsertBlock(nil, view...)
+}
+
+func (p *_progress) Done() <-chan struct{} {
 	return p.blocks.Done()
 }
 
-func (p *progressImpl) Close() error {
+func (p *_progress) Close() error {
 	return p.blocks.Close()
 }
 
-func (p *progressImpl) Wait(ctx context.Context) error {
+func (p *_progress) Wait(ctx context.Context) error {
 	return p.blocks.Wait(ctx)
 }
 
-func (p *progressImpl) listen() {
+func (p *_progress) listen() {
 	for {
 		select {
 		case <-p.ticker.C:
@@ -98,7 +110,7 @@ func (p *progressImpl) listen() {
 	}
 }
 
-func (p *progressImpl) tick() {
+func (p *_progress) tick() {
 	flush := false
 	for _, b := range p.blocks.Blocks() {
 		if e, ok := b.Payload().(Ticker); ok {

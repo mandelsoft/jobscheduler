@@ -2,9 +2,11 @@ package uiblocks
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/mandelsoft/goutils/general"
 )
@@ -23,90 +25,176 @@ type FdWriter interface {
 	Fd() uintptr
 }
 
-type Block struct {
-	titleline string
-	view      int
-	blocks    *UIBlocks
-	payload   any
-	auto      bool
+type UIBlock struct {
+	titleline   string
+	view        int
+	blocks      *UIBlocks
+	payload     any
+	next        *UIBlock
+	auto        bool
+	gap         string
+	followupGap string
+	contentGap  string
+
+	startline bool
 
 	buf    bytes.Buffer
 	closed bool
+	done   chan struct{}
 
 	final []byte
 }
 
-type block = Block
+type block = UIBlock
 
-func (w *Block) UIBlocks() *UIBlocks {
+func newBlock(w *UIBlocks, view ...int) *UIBlock {
+	return &UIBlock{
+		blocks:    w,
+		startline: true,
+		view:      general.OptionalDefaulted(DefaultView, view...),
+		done:      make(chan struct{})}
+}
+
+func (w *UIBlock) UIBlocks() *UIBlocks {
 	return w.blocks
 }
 
-func (w *Block) SetTitleLine(s string) *Block {
+func (w *UIBlock) SetTitleLine(s string) *UIBlock {
+	w.blocks.lock.RLock()
+	defer w.blocks.lock.RUnlock()
+
 	w.titleline = s
 	return w
 }
 
-func (w *Block) SetFinal(data string) *Block {
+func (w *UIBlock) SetFinal(data string) *UIBlock {
 	w.final = []byte(data)
 	return w
 }
 
-func (w *Block) SetAuto(b ...bool) *Block {
+func (w *UIBlock) SetAuto(b ...bool) *UIBlock {
 	w.auto = general.OptionalDefaultedBool(true, b...)
 	return w
 }
 
-func (w *Block) SetPayload(p any) *Block {
+func (w *UIBlock) SetGap(gap string) *UIBlock {
+	w.gap = gap
+	if w.followupGap == "" {
+		w.followupGap = gap
+	}
+	return w
+}
+
+func (w *UIBlock) SetFollowUpGap(gap string) *UIBlock {
+	w.followupGap = gap
+	return w
+}
+
+func (w *UIBlock) SetContentGap(gap string) *UIBlock {
+	w.contentGap = gap
+	return w
+}
+
+func (w *UIBlock) SetPayload(p any) *UIBlock {
 	w.payload = p
 	return w
 }
 
-func (w *Block) Payload() any {
+func (w *UIBlock) Payload() any {
 	return w.payload
 }
 
-func (w *Block) Reset() {
+func (w *UIBlock) SetNext(n *UIBlock) {
 	w.blocks.lock.Lock()
 	defer w.blocks.lock.Unlock()
+	w.next = n
+}
+
+func (w *UIBlock) Next() *UIBlock {
+	w.blocks.lock.RLock()
+	defer w.blocks.lock.RUnlock()
+	return w.next
+}
+
+func (w *UIBlock) Reset() {
+	w.blocks.lock.Lock()
+	defer w.blocks.lock.Unlock()
+	w.startline = true
 	w.buf.Reset()
 }
 
 // Write save the contents of buf to the writer b. The only errors returned are ones encountered while writing to the underlying buffer.
-func (w *Block) Write(buf []byte) (n int, err error) {
+func (w *UIBlock) Write(buf []byte) (n int, err error) {
 	w.blocks.lock.Lock()
 	defer w.blocks.lock.Unlock()
 	if w.closed {
 		return 0, os.ErrClosed
 	}
-	n, err = w.buf.Write(buf)
+
+	if strings.HasPrefix(string(buf), "doing") {
+		w.buf.String()
+	}
+	contentgap := w.followupGap + w.contentGap
+	gap := contentgap
+	if w.buf.Len() == 0 && w.titleline == "" {
+		gap = w.gap + w.contentGap
+	}
+	if gap != "" {
+		for _, b := range buf {
+			if b == '\n' {
+				w.startline = true
+				gap = contentgap
+			} else {
+				if w.startline {
+					w.buf.Write([]byte(gap))
+				}
+				w.startline = false
+			}
+			w.buf.WriteByte(b)
+		}
+	} else {
+		n, err = w.buf.Write(buf)
+	}
 	if w.auto {
 		w.blocks.requestFlush()
 	}
 	return n, err
 }
 
-func (w *Block) Close() error {
+func (w *UIBlock) Close() error {
 	w.blocks.lock.Lock()
 	defer w.blocks.lock.Unlock()
 	if w.closed {
 		return os.ErrClosed
 	}
 	w.closed = true
+	close(w.done)
 	return w.blocks.discardBlock()
 }
 
-func (w *Block) IsClosed() bool {
+func (w *UIBlock) IsClosed() bool {
 	w.blocks.lock.Lock()
 	defer w.blocks.lock.Unlock()
 	return w.closed
 }
 
-func (w *Block) Flush() error {
+func (w *UIBlock) Wait(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case <-w.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (w *UIBlock) Flush() error {
 	return w.blocks.Flush()
 }
 
-func (w *Block) flush(final bool) (int, error) {
+func (w *UIBlock) flush(final bool) (int, error) {
 	lines := 0
 	titleline := 0
 	newline := false
@@ -115,7 +203,7 @@ func (w *Block) flush(final bool) (int, error) {
 		data = w.final
 	} else {
 		if w.titleline != "" {
-			w.blocks.out.Write([]byte(w.titleline + "\n"))
+			w.blocks.out.Write([]byte(w.gap + w.titleline + "\n"))
 			titleline = 1
 		}
 	}
@@ -145,6 +233,10 @@ func (w *Block) flush(final bool) (int, error) {
 		linestart[lines%w.view] = start
 		lines++
 		data = append(data, '\n')
+	}
+
+	if w.view > 1 {
+		newline = false
 	}
 
 	var err error

@@ -11,7 +11,7 @@ import (
 func main() {
 	blocks := uiblocks.New(os.Stdout)
 
-	writer := blocks.NewBlock(3).SetAuto().SetTitleLine("Some work:")
+	writer := blocks.NewBlock(3).SetAuto().SetGap("-> ").SetTitleLine("Some work:")
 
 	for i := 0; i <= 20; i++ {
 		fmt.Fprintf(writer, "doing step %d\n", i)

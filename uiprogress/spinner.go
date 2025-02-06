@@ -30,11 +30,11 @@ func (s *_spinnerProtected) Visualize() (string, bool) {
 
 // NewSpinner creates a Spinner with a predefined
 // set of spinner phases taken from SpinnerTypes.
-func NewSpinner(p Progress, set int) Spinner {
+func NewSpinner(p Container, set int) Spinner {
 	b := &_Spinner{}
 	self := ppi.Self[Spinner, ppi.ProgressProtected]{b, &_spinnerProtected{b}}
 	b.RawSpinner = NewRawSpinner[Spinner](self, set)
-	b.ProgressBase = ppi.NewProgressBase[Spinner](self, p.UIBlocks(), 1, nil)
+	b.ProgressBase = ppi.NewProgressBase[Spinner](self, p, 1, nil)
 	return b
 }
 

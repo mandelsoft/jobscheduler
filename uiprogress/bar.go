@@ -119,7 +119,7 @@ func (b *_barProtected) Visualize() (string, bool) {
 }
 
 // NewBar returns a new progress bar
-func NewBar(p Progress, total int) Bar {
+func NewBar(p Container, total int) Bar {
 	b := &_Bar{
 		total:    total,
 		width:    Width,
@@ -130,7 +130,7 @@ func NewBar(p Progress, total int) Bar {
 		empty:    Empty,
 	}
 	self := ppi.ProgressSelf[Bar](b, &_barProtected{b})
-	b.ProgressBase = ppi.NewProgressBase[Bar](self, p.UIBlocks(), 1, nil)
+	b.ProgressBase = ppi.NewProgressBase[Bar](self, p, 1, nil)
 	return b
 }
 

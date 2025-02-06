@@ -44,6 +44,7 @@ func NewRawSpinner[T ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtecte
 	return RawSpinner[T]{
 		self:    self,
 		charset: SpinnerTypes[set],
+		cnt:     Speed - 1,
 		speed:   Speed,
 		done:    Done,
 	}
@@ -51,6 +52,7 @@ func NewRawSpinner[T ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtecte
 
 func (s *RawSpinner[T]) SetSpeed(v int) T {
 	s.speed = v
+	s.cnt = v - 1
 	return s.self.Self
 }
 

@@ -2,6 +2,7 @@ package ppi
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"slices"
 	"sync"
@@ -12,6 +13,11 @@ import (
 	"github.com/mandelsoft/jobscheduler/uiblocks"
 	"github.com/mandelsoft/jobscheduler/units"
 )
+
+type Container interface {
+	NewBlock(view ...int) *uiblocks.UIBlock
+	Wait(ctx context.Context) error
+}
 
 type Self[I, P any] struct {
 	Self      I
@@ -31,7 +37,7 @@ type ElemBase[T BaseInterface, I BaseProtected] struct {
 
 	self Self[T, I]
 
-	block  *uiblocks.Block
+	block  *uiblocks.UIBlock
 	closer func()
 
 	// timeStarted is time progress began.
@@ -41,29 +47,33 @@ type ElemBase[T BaseInterface, I BaseProtected] struct {
 	closed bool
 }
 
-func NewElemBase[T BaseInterface, I BaseProtected](self Self[T, I], b *uiblocks.UIBlocks, view int, closer func()) ElemBase[T, I] {
+func NewElemBase[T BaseInterface, I BaseProtected](self Self[T, I], p Container, view int, closer func()) ElemBase[T, I] {
 	if view <= 0 {
 		view = 1
 	}
-	return ElemBase[T, I]{self: self, block: b.NewBlock(view).SetPayload(self.Self), closer: closer}
+	return ElemBase[T, I]{self: self, block: p.NewBlock(view).SetPayload(self.Self), closer: closer}
 }
 
-func (b *ElemBase[T, I]) UIBlock() *uiblocks.Block {
+func (b *ElemBase[T, I]) UIBlock() *uiblocks.UIBlock {
 	return b.block
 }
 
 func (b *ElemBase[T, I]) Start() {
+	if b.start() {
+		b.self.Protected.Update()
+	}
+}
+
+func (b *ElemBase[T, I]) start() bool {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 
-	if b.closed {
-		return
-	}
-
 	var t time.Time
-	if b.timeStarted == t {
-		b.timeStarted = time.Now()
+	if b.closed || b.timeStarted != t {
+		return false
 	}
+	b.timeStarted = time.Now()
+	return true
 }
 
 func (b *ElemBase[T, I]) IsStarted() bool {
@@ -152,8 +162,8 @@ type ProgressBase[T ProgressInterface[T]] struct {
 	prependFuncs []DecoratorFunc
 }
 
-func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected], b *uiblocks.UIBlocks, view int, closer func()) ProgressBase[T] {
-	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected](self, b, view, closer)}
+func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected], p Container, view int, closer func()) ProgressBase[T] {
+	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected](self, p, view, closer)}
 }
 
 func (b *ProgressBase[T]) SetFinal(m string) T {

@@ -11,11 +11,11 @@ import (
 func main() {
 	p := uiprogress.New(os.Stdout)
 
-	bar := uiprogress.NewText(p, 3).SetAuto()
+	text := uiprogress.NewText(p, 3).SetAuto()
 
 	for i := 0; i <= 20; i++ {
-		fmt.Fprintf(bar, "doing step %d\n", i)
+		fmt.Fprintf(text, "doing step %d\n", i)
 		time.Sleep(time.Millisecond * 500)
 	}
-	bar.Close()
+	text.Close()
 }

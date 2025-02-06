@@ -45,11 +45,11 @@ func (t *_textProtected) Update() bool {
 // NewText creates a new text stream with the given window size.
 // With Text.SetAuto updates are triggered by the Text.Write calls.
 // Otherwise, Text.Flush must be called to update the text window.
-func NewText(p Progress, view ...int) Text {
+func NewText(p Container, view ...int) Text {
 	t := &_text{}
 
 	self := ppi.Self[Text, ppi.BaseProtected]{t, &_textProtected{t}}
-	t.ElemBase = ppi.NewElemBase[Text, ppi.BaseProtected](self, p.UIBlocks(), general.OptionalDefaulted(3, view...), nil)
+	t.ElemBase = ppi.NewElemBase[Text, ppi.BaseProtected](self, p, general.OptionalDefaulted(3, view...), nil)
 	return t
 }
 

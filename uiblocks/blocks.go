@@ -13,7 +13,7 @@ import (
 
 // UIBlocks is a buffered the writer that updates the terminal. The contents of writer will be flushed on a timed interval or when Flush is called.
 type UIBlocks struct {
-	lock sync.Mutex
+	lock sync.RWMutex
 
 	// out is the writer to write to
 	out       io.Writer
@@ -21,7 +21,7 @@ type UIBlocks struct {
 
 	overFlowHandled bool
 
-	blocks    []*Block
+	blocks    []*UIBlock
 	lineCount int
 
 	closed bool
@@ -71,27 +71,47 @@ func (w *UIBlocks) listen() {
 	}
 }
 
-func (w *UIBlocks) NewBlock(view ...int) *Block {
+func (w *UIBlocks) NewBlock(view ...int) *UIBlock {
+	return w.addBlock(nil, 0, view...)
+}
+
+func (w *UIBlocks) AppendBlock(p *UIBlock, view ...int) *UIBlock {
+	return w.addBlock(p, 1, view...)
+}
+
+func (w *UIBlocks) InsertBlock(p *UIBlock, view ...int) *UIBlock {
+	return w.addBlock(p, 0, view...)
+}
+
+func (w *UIBlocks) addBlock(p *UIBlock, offset int, view ...int) *UIBlock {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
 	if w.closed {
 		return nil
 	}
-	b := &Block{blocks: w, view: general.OptionalDefaulted(DefaultView, view...)}
+	b := newBlock(w, view...)
+	if p != nil {
+		for i := range w.blocks {
+			if w.blocks[i] == p {
+				w.blocks = append(w.blocks[:i+offset], append([]*UIBlock{b}, w.blocks[i+offset:]...)...)
+				return b
+			}
+		}
+	}
 	w.blocks = append(w.blocks, b)
 	return b
 }
 
-func (w *UIBlocks) Blocks() []*Block {
-	w.lock.Lock()
-	defer w.lock.Unlock()
+func (w *UIBlocks) Blocks() []*UIBlock {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
 	return slices.Clone(w.blocks)
 }
 
 func (w *UIBlocks) TermWidth() int {
-	w.lock.Lock()
-	defer w.lock.Unlock()
+	w.lock.RLock()
+	defer w.lock.RUnlock()
 
 	return w.termWidth
 }

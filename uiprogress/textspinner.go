@@ -18,6 +18,11 @@ type TextSpinner interface {
 	// is triggered by every spinner update.
 	SetAuto(b ...bool) TextSpinner
 
+	SetSpeed(int) TextSpinner
+
+	// SetGap sets the relative gap for the content.
+	SetGap(gap string) TextSpinner
+
 	io.Writer
 }
 
@@ -41,12 +46,12 @@ func (t *_textSpinnerProtected) Visualize() (string, bool) {
 
 // NewTextSpinner creates  new TextSpinner with the given
 // window size. It can be used like a Text element.
-func NewTextSpinner(p Progress, set int, view ...int) TextSpinner {
+func NewTextSpinner(p Container, set int, view ...int) TextSpinner {
 	b := &_TextSpinner{}
 	self := ppi.Self[TextSpinner, ppi.ProgressProtected]{b, &_textSpinnerProtected{b}}
 
 	b.RawSpinner = NewRawSpinner[TextSpinner](self, set)
-	b.ProgressBase = ppi.NewProgressBase[TextSpinner](self, p.UIBlocks(), general.OptionalDefaulted(3, view...), nil)
+	b.ProgressBase = ppi.NewProgressBase[TextSpinner](self, p, general.OptionalDefaulted(3, view...), nil)
 	b.SetSpeed(4)
 	b.UIBlock().SetAuto()
 	return b
@@ -57,7 +62,13 @@ func (t *_TextSpinner) SetAuto(b ...bool) TextSpinner {
 	return t
 }
 
+func (t *_TextSpinner) SetGap(gap string) TextSpinner {
+	t.UIBlock().SetContentGap(gap)
+	return t
+}
+
 func (b *_TextSpinner) Write(data []byte) (int, error) {
+	b.Start()
 	return b.UIBlock().Write(data)
 }
 
