@@ -2,12 +2,15 @@ package uiprogress
 
 import (
 	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
+	"github.com/mandelsoft/jobscheduler/uiprogress/specs"
 )
+
+var SpinnerTypes = specs.SpinnerTypes
 
 // Spinner provides one line of unlimited progress information.
 type Spinner interface {
 	ProgressInterface[Spinner]
-	SetSpeed(int) Spinner
+	RawSpinnerInterface[Spinner]
 }
 
 type _Spinner struct {

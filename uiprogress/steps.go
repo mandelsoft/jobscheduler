@@ -11,7 +11,7 @@ type Steps interface {
 
 // NewSteps create a Steps progress information for a given
 // list of sequential steps.
-func NewSteps(p Container, steps ...string) Steps {
+func NewSteps(p Container, steps []string) Steps {
 	steps = strutils.AlignLeft(steps, ' ')
 
 	return NewBar(p, len(steps)).PrependFunc(func(b Element) string {

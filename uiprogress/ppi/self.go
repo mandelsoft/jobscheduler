@@ -5,7 +5,7 @@ type Protected[I any] interface {
 }
 
 // Self represents the effective object,
-// the extended self of some kind of
+// the extended self passed to some kind of
 // base implementations.
 // It contains the effective object
 // and a wrapper implementing
@@ -29,19 +29,3 @@ func (s Self[I, P]) Protected() P {
 func NewSelf[I any, P Protected[I]](p P) Self[I, P] {
 	return Self[I, P]{p}
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-type t struct {
-}
-
-type p struct {
-	*t
-}
-
-func (p *p) Self() *t {
-	return p.t
-}
-
-var _ Protected[*t] = (*p)(nil)
-var _ Self[*t, *p] = Self[*t, *p]{&p{&t{}}}

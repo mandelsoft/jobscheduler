@@ -50,6 +50,11 @@ func NewElemBase[I BaseInterface, P BaseProtected[I]](self Self[I, P], p Contain
 	return ElemBase[I, P]{self: self, block: p.NewBlock(view).SetPayload(self.Self()), closer: closer}
 }
 
+func (b *ElemBase[I, P]) SetFinal(m string) I {
+	b.block.SetFinal(m)
+	return b.self.Self()
+}
+
 func (b *ElemBase[I, P]) UIBlock() *uiblocks.UIBlock {
 	return b.block
 }
@@ -137,7 +142,8 @@ func (b *ElemBase[I, P]) TimeElapsedString() string {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// ProgressProtected in the (protected) implementation interface.
+// ProgressProtected in the (protected) implementation interface for progress
+// indicators.
 type ProgressProtected[I any] interface {
 	BaseProtected[I]
 	Visualize() (string, bool)
@@ -160,11 +166,6 @@ type ProgressBase[T ProgressInterface[T]] struct {
 
 func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected[T]], p Container, view int, closer func()) ProgressBase[T] {
 	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected[T]](self, p, view, closer)}
-}
-
-func (b *ProgressBase[T]) SetFinal(m string) T {
-	b.block.SetFinal(m)
-	return b.self.Self()
 }
 
 // AppendFunc runs the decorator function and renders the output on the right of the progress bar

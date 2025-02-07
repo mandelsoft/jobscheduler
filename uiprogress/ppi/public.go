@@ -3,6 +3,8 @@ package ppi
 import (
 	"io"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 type Element = BaseInterface
@@ -34,14 +36,18 @@ type BaseInterface interface {
 	TimeElapsedString() string
 }
 
-// ProgressInterface in the public interface of elements
-// featuring a concrete progress information line.
-type ProgressInterface[T any] interface {
-	BaseInterface
-
+type BaseConfig[T any] interface {
 	// SetFinal sets a text message shown instead of the
 	// text window after the action has been finished.
-	SetFinal(m string) T
+	SetFinal(string) T
+}
+
+// ProgressConfig is the configuration interface for progress indicators.
+type ProgressConfig[T any] interface {
+	BaseConfig[T]
+
+	// SetColor set the color used for the progress line.
+	SetColor(col *color.Color) T
 
 	// AppendFunc adds a function providing some text appended
 	// to the basic progress indicator.
@@ -62,4 +68,11 @@ type ProgressInterface[T any] interface {
 	// PrependElapsed appends the elapsed time of the action
 	// or the duration of the action if the element is already closed.
 	PrependElapsed(offset ...int) T
+}
+
+// ProgressInterface in the public interface of elements
+// featuring a concrete progress information line.
+type ProgressInterface[T any] interface {
+	BaseInterface
+	ProgressConfig[T]
 }

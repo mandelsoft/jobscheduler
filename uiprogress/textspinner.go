@@ -12,13 +12,12 @@ import (
 // followed by a text window.
 type TextSpinner interface {
 	ProgressInterface[TextSpinner]
+	RawSpinnerInterface[TextSpinner]
 
 	// SetAuto enables the automatic text window update on
 	// calls to Text.Write. Even if not set, the update
 	// is triggered by every spinner update.
 	SetAuto(b ...bool) TextSpinner
-
-	SetSpeed(int) TextSpinner
 
 	// SetGap sets the relative gap for the content.
 	SetGap(gap string) TextSpinner

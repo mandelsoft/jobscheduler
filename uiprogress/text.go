@@ -23,6 +23,12 @@ type Text interface {
 	// calls to Text.Write.
 	SetAuto(b ...bool) Text
 
+	// SetTitleLine sets a title line for the text view
+	SetTitleLine(string) Text
+
+	// SetGap sets a prefix for the text view lines.
+	SetGap(string) Text
+
 	// Flush can be called if automatic mode is set to false
 	// (the default) to trigger a screen update.
 	Flush() error
@@ -64,6 +70,16 @@ func (t *_text) SetFinal(m string) Text {
 
 func (t *_text) SetAuto(b ...bool) Text {
 	t.UIBlock().SetAuto(b...)
+	return t
+}
+
+func (t *_text) SetTitleLine(s string) Text {
+	t.UIBlock().SetTitleLine(s)
+	return t
+}
+
+func (t *_text) SetGap(s string) Text {
+	t.UIBlock().SetGap(s)
 	return t
 }
 

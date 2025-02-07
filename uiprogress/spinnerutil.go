@@ -1,55 +1,51 @@
 package uiprogress
 
 import (
-	"maps"
 	"sync"
 
-	"github.com/briandowns/spinner"
 	"github.com/mandelsoft/jobscheduler/strutils"
 	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
+	"github.com/mandelsoft/jobscheduler/uiprogress/specs"
 )
 
-var Done = "done"
+type RawSpinnerInterface[T any] interface {
+	// SetSpeed sets the spinner speed (larger = slower).
+	SetSpeed(v int) T
 
-// SpinnerTypes predefined spinner types.
-// Most of them are taken from [spinner.CharSets] (github.com/briandowns/spinner).
-var SpinnerTypes = maps.Clone(spinner.CharSets)
+	// SetDone sets the done visualization string.
+	SetDone(string) T
 
-func init() {
-	SpinnerTypes[1000] = []string{"███▒▒▒▒▒▒▒", "▒███▒▒▒▒▒▒", "▒▒███▒▒▒▒▒", "▒▒▒███▒▒▒▒", "▒▒▒▒███▒▒▒", "▒▒▒▒▒███▒▒", "▒▒▒▒▒▒███▒", "▒▒▒▒▒▒▒███", "█▒▒▒▒▒▒▒██", "██▒▒▒▒▒▒▒█"}
-	SpinnerTypes[1001] = []string{"███▒▒▒▒▒▒▒", "▒███▒▒▒▒▒▒", "▒▒███▒▒▒▒▒", "▒▒▒███▒▒▒▒", "▒▒▒▒███▒▒▒", "▒▒▒▒▒███▒▒", "▒▒▒▒▒▒███▒", "▒▒▒▒▒▒▒███", "▒▒▒▒▒▒███▒", "▒▒▒▒▒███▒▒", "▒▒▒▒███▒▒▒", "▒▒███▒▒▒▒▒", "▒███▒▒▒▒▒▒"}
-	SpinnerTypes[1002] = []string{"⋮", "⋰", "⋯", "⋱"}
-	SpinnerTypes[1003] = []string{"✶", "✷", "✸", "✷"}
-	SpinnerTypes[1004] = []string{"𝄖", "𝄗", "𝄘", "𝄙", "𝄛", "𝄙", "𝄘", "𝄗", "𝄖"}
-	SpinnerTypes[1005] = []string{"▢", "▣"}
-	SpinnerTypes[1006] = []string{"◇", "◈"}
-	SpinnerTypes[1007] = []string{"◇", "◈", "◆"}
+	// SetPredefined set predefined spinner phases
+	SetPredefined(int) T
+
+	// SetPhases sets the spinner phases
+	SetPhases(...string) T
 }
-
-var Speed = 2
 
 type RawSpinner[P ProgressInterface[P]] struct {
 	lock sync.Mutex
 	self ppi.Self[P, ppi.ProgressProtected[P]]
 
-	charset []string
-	speed   int
-	done    string
+	phases []string
+	speed  int
+	done   string
 
 	cnt   int
 	phase int
 }
+
+var _ RawSpinnerInterface[Spinner] = (*RawSpinner[Spinner])(nil)
 
 func NewRawSpinner[T ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtected[T]], set int) RawSpinner[T] {
 	if set < 0 || SpinnerTypes[set] == nil {
 		set = 9
 	}
 	return RawSpinner[T]{
-		self:    self,
-		charset: SpinnerTypes[set],
-		cnt:     Speed - 1,
-		speed:   Speed,
-		done:    Done,
+		self:   self,
+		phases: SpinnerTypes[set],
+		cnt:    specs.Speed - 1,
+		speed:  specs.Speed,
+		done:   specs.Done,
 	}
 }
 
@@ -65,7 +61,14 @@ func (s *RawSpinner[T]) SetDone(m string) T {
 }
 
 func (s *RawSpinner[T]) SetPhases(phases ...string) T {
-	s.charset = strutils.AlignLeft(phases, ' ')
+	s.phases = strutils.AlignLeft(phases, ' ')
+	return s.self.Self()
+}
+
+func (s *RawSpinner[T]) SetPredefined(i int) T {
+	if c, ok := SpinnerTypes[i]; ok {
+		s.phases = c
+	}
 	return s.self.Self()
 }
 
@@ -76,7 +79,7 @@ func Visualize[T ProgressInterface[T]](s *RawSpinner[T]) (string, bool) {
 	if !s.self.Self().IsStarted() {
 		return "", false
 	}
-	return s.charset[s.phase], false
+	return s.phases[s.phase], false
 }
 
 func (s *RawSpinner[T]) Tick() bool {
@@ -92,7 +95,7 @@ func (s *RawSpinner[T]) Tick() bool {
 		return false
 	}
 	s.cnt = 0
-	s.phase = (s.phase + 1) % len(s.charset)
+	s.phase = (s.phase + 1) % len(s.phases)
 	s.lock.Unlock()
 	return s.self.Protected().Update()
 }
