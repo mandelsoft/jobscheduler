@@ -16,6 +16,7 @@ func main() {
 	for b := 0; b < 3; b++ {
 		total := 100 + rand.Int()%100
 		w := uiprogress.NewBar(p, total).
+			SetPredefined(1).
 			SetFinal(fmt.Sprintf("Finished: Downloaded %d GB", total)).
 			AppendFunc(uiprogress.Amount(units.Plain)).
 			AppendFunc(uiprogress.Message("GB")).

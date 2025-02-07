@@ -21,6 +21,9 @@ func init() {
 	SpinnerTypes[1002] = []string{"⋮", "⋰", "⋯", "⋱"}
 	SpinnerTypes[1003] = []string{"✶", "✷", "✸", "✷"}
 	SpinnerTypes[1004] = []string{"𝄖", "𝄗", "𝄘", "𝄙", "𝄛", "𝄙", "𝄘", "𝄗", "𝄖"}
+	SpinnerTypes[1005] = []string{"▢", "▣"}
+	SpinnerTypes[1006] = []string{"◇", "◈"}
+	SpinnerTypes[1007] = []string{"◇", "◈", "◆"}
 }
 
 var Speed = 2
