@@ -1,16 +1,21 @@
 package uiprogress
 
 import (
-	"io"
-	"time"
-
-	"github.com/fatih/color"
 	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
 // DecoratorFunc is a function that can be prepended and appended to the progress bar
 type DecoratorFunc = ppi.DecoratorFunc
 
+type Element = ppi.Element
+
+type Container = ppi.Container
+
+type Ticker interface {
+	Tick() bool
+}
+
+/*
 // BaseInterface is the common interface of all
 // elements provided by the uiprogress package
 type BaseInterface interface {
@@ -18,7 +23,7 @@ type BaseInterface interface {
 
 	// Start records the actual start time and
 	// starts the element.
-	Start()
+	Start() BaseInterface
 
 	// IsStarted reports whether element has been started.
 	IsStarted() bool
@@ -33,6 +38,9 @@ type BaseInterface interface {
 	// TimeElapsedString provides a nice string representation for
 	// TimeElapsed.
 	TimeElapsedString() string
+
+	// Wait waits until the element is finished.
+	Wait(context.Context) error
 }
 
 // ProgressInterface in the public interface of elements
@@ -67,3 +75,5 @@ type ProgressInterface[T any] interface {
 	// or the duration of the action if the element is already closed.
 	PrependElapsed(offset ...int) T
 }
+
+*/

@@ -11,7 +11,7 @@ import (
 // a Text element. A title line reports the progress
 // followed by a text window.
 type TextSpinner interface {
-	ProgressInterface[TextSpinner]
+	ppi.ProgressInterface[TextSpinner]
 	RawSpinnerInterface[TextSpinner]
 
 	// SetAuto enables the automatic text window update on

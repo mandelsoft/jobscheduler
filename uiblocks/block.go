@@ -207,6 +207,9 @@ func (w *UIBlock) flush(final bool) (int, error) {
 			titleline = 1
 		}
 	}
+	if len(data) == 0 {
+		return 0, nil
+	}
 
 	linestart := make([]int, w.view)
 

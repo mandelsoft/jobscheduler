@@ -21,7 +21,7 @@ func (d *StepsDefinition) Dup() *StepsDefinition {
 }
 
 func (d *StepsDefinition) Add(c Container) Bar {
-	s := NewSteps(c, d.GetSteps())
+	s := NewSteps(c, d.GetSteps()...)
 
 	if v := d.GetFinal(); v != "" {
 		s.SetFinal(v)

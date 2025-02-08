@@ -9,7 +9,7 @@ var SpinnerTypes = specs.SpinnerTypes
 
 // Spinner provides one line of unlimited progress information.
 type Spinner interface {
-	ProgressInterface[Spinner]
+	ppi.ProgressInterface[Spinner]
 	RawSpinnerInterface[Spinner]
 }
 

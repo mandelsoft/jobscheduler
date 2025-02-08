@@ -22,7 +22,7 @@ type RawSpinnerInterface[T any] interface {
 	SetPhases(...string) T
 }
 
-type RawSpinner[P ProgressInterface[P]] struct {
+type RawSpinner[P ppi.ProgressInterface[P]] struct {
 	lock sync.Mutex
 	self ppi.Self[P, ppi.ProgressProtected[P]]
 
@@ -36,7 +36,7 @@ type RawSpinner[P ProgressInterface[P]] struct {
 
 var _ RawSpinnerInterface[Spinner] = (*RawSpinner[Spinner])(nil)
 
-func NewRawSpinner[T ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtected[T]], set int) RawSpinner[T] {
+func NewRawSpinner[T ppi.ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtected[T]], set int) RawSpinner[T] {
 	if set < 0 || SpinnerTypes[set] == nil {
 		set = 9
 	}
@@ -72,7 +72,7 @@ func (s *RawSpinner[T]) SetPredefined(i int) T {
 	return s.self.Self()
 }
 
-func Visualize[T ProgressInterface[T]](s *RawSpinner[T]) (string, bool) {
+func Visualize[T ppi.ProgressInterface[T]](s *RawSpinner[T]) (string, bool) {
 	if s.self.Self().IsClosed() {
 		return s.done, true
 	}

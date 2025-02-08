@@ -59,10 +59,13 @@ func (b *ElemBase[I, P]) UIBlock() *uiblocks.UIBlock {
 	return b.block
 }
 
-func (b *ElemBase[I, P]) Start() {
+func (b *ElemBase[I, P]) Start() BaseInterface {
 	if b.start() {
 		b.self.Protected().Update()
+		b.block.Flush()
+		return b.self.Self()
 	}
+	return nil
 }
 
 func (b *ElemBase[I, P]) start() bool {
@@ -117,6 +120,10 @@ func (b *ElemBase[I, P]) IsClosed() bool {
 	return b.closed
 }
 
+func (b *ElemBase[I, P]) Wait(ctx context.Context) error {
+	return b.block.Wait(ctx)
+}
+
 // TimeElapsed returns the time elapsed
 func (b *ElemBase[I, P]) TimeElapsed() time.Duration {
 	b.Lock.RLock()
@@ -162,10 +169,19 @@ type ProgressBase[T ProgressInterface[T]] struct {
 
 	appendFuncs  []DecoratorFunc
 	prependFuncs []DecoratorFunc
+	tick         bool
 }
 
 func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected[T]], p Container, view int, closer func()) ProgressBase[T] {
 	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected[T]](self, p, view, closer)}
+}
+
+func (b *ProgressBase[T]) Tick() bool {
+	if b.tick && !b.closed {
+		b.self.Protected().Update()
+		return true
+	}
+	return false
 }
 
 // AppendFunc runs the decorator function and renders the output on the right of the progress bar
@@ -203,6 +219,7 @@ func (b *ProgressBase[T]) AppendElapsed(offset ...int) T {
 	b.AppendFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
+	b.tick = true
 	return b.self.Self()
 }
 
@@ -211,6 +228,7 @@ func (b *ProgressBase[T]) PrependElapsed(offset ...int) T {
 	b.PrependFunc(func(Element) string {
 		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
+	b.tick = true
 	return b.self.Self()
 }
 

@@ -7,16 +7,7 @@ import (
 	"time"
 
 	"github.com/mandelsoft/jobscheduler/uiblocks"
-	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
-
-type Element = ppi.Element
-
-type Container = ppi.Container
-
-type Ticker interface {
-	Tick() bool
-}
 
 // Progress is a set of lines on a terminal
 // used to display some live progress information.

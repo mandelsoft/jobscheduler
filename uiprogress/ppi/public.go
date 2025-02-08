@@ -1,6 +1,7 @@
 package ppi
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -19,7 +20,7 @@ type BaseInterface interface {
 
 	// Start records the actual start time and
 	// starts the element.
-	Start()
+	Start() BaseInterface
 
 	// IsStarted reports whether element has been started.
 	IsStarted() bool
@@ -34,6 +35,9 @@ type BaseInterface interface {
 	// TimeElapsedString provides a nice string representation for
 	// TimeElapsed.
 	TimeElapsedString() string
+
+	// Wait waits until the element is finished.
+	Wait(ctx context.Context) error
 }
 
 type BaseConfig[T any] interface {

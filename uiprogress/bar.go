@@ -26,7 +26,7 @@ var (
 // Bar is a progress bar used to visualize the progress of an action in
 // relation to a known maximum of required work.
 type Bar interface {
-	ProgressInterface[Bar]
+	ppi.ProgressInterface[Bar]
 
 	// AppendCompleted appends the completion in percent
 	// to the visualization.
@@ -67,9 +67,8 @@ type Bar interface {
 	// to zero only the prepended and appended information is shown.
 	SetWidth(n uint) Bar
 
-	Start()
-
 	Current() int
+	IsFinished() bool
 	Set(n int) bool
 	Incr() bool
 
@@ -215,27 +214,29 @@ func (b *_Bar) Set(n int) bool {
 // Incr increments the current value by 1, time elapsed to current time and returns true. It returns false if the cursor has reached or exceeds total value.
 func (b *_Bar) Incr() bool {
 	b.Start()
+	b.Lock.Lock()
+
 	if b.incr() {
-		if b.isFinished() {
+		if b.current == b.total {
+			b.Lock.Unlock()
 			b.Close()
 		} else {
+			b.Lock.Unlock()
 			b.Flush()
 		}
 		return true
 	}
+	b.Lock.Unlock()
 	return false
 }
 
-func (b *_Bar) isFinished() bool {
+func (b *_Bar) IsFinished() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.current == b.total
 }
 
 func (b *_Bar) incr() bool {
-	b.Lock.Lock()
-	defer b.Lock.Unlock()
-
 	if b.current == b.total {
 		return false
 	}
