@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	github.com/briandowns/spinner v1.23.2
-	github.com/gosuri/uiprogress v0.0.1
+	github.com/fatih/color v1.18.0
 	github.com/mandelsoft/goutils v0.0.0-20241227142622-83a787399095
 	github.com/mandelsoft/logging v0.0.0-20240618075559-fdca28a87b0a
 	github.com/mattn/go-isatty v0.0.20
@@ -14,7 +14,6 @@ require (
 
 require (
 	github.com/drone/envsubst v1.0.3 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-test/deep v1.1.0 // indirect

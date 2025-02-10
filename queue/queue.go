@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mandelsoft/goutils/general"
+	"github.com/mandelsoft/goutils/matcher"
 	"github.com/mandelsoft/jobscheduler/syncutils"
 	"github.com/mandelsoft/jobscheduler/syncutils/utils"
 )
@@ -32,13 +33,14 @@ type Queue[E any, P QueueElement[E]] interface {
 	Remove(elem P)
 	TryGet() (P, bool)
 	Get(ctx context.Context) (P, error)
+	HasWaiting() bool
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 type queue[E any, P QueueElement[E]] struct {
 	monitor  syncutils.Monitor
-	first    *utils.Entry[P]
+	list     utils.List[P]
 	describe func(P) string
 }
 
@@ -46,23 +48,35 @@ func New[E any, P QueueElement[E]](describe ...func(P) string) Queue[E, P] {
 	return &queue[E, P]{monitor: syncutils.NewMutexMonitor(), describe: general.Optional(describe...)}
 }
 
+func _New[E any, P QueueElement[E]](describe ...func(P) string) queue[E, P] {
+	return queue[E, P]{monitor: syncutils.NewMutexMonitor(), describe: general.Optional(describe...)}
+}
+
+func (q *queue[E, P]) HasWaiting() bool {
+	q.monitor.Lock()
+	defer q.monitor.Unlock()
+
+	return q.monitor.HasWaiting()
+}
+
+func (q *queue[E, P]) addToQueue(elem P) {
+	prio := elem.GetPriority()
+	q.list.Insert(elem, func(e P) bool {
+		return e.GetPriority().Less(prio)
+	})
+}
+
+func (q *queue[E, P]) removeFromQueue(elem P) {
+	q.list.Remove(matcher.Equals(elem))
+}
+
+func (q *queue[E, P]) tryGet() (P, bool) {
+	return q.list.RemoveFirst2()
+}
+
 func (q *queue[E, P]) Add(elem P) {
 	q.monitor.Lock()
-
-	p := &q.first
-	prio := elem.GetPriority()
-	entry := &utils.Entry[P]{Elem: elem}
-
-	for {
-		if *p == nil || (*p).Elem.GetPriority().Less(prio) {
-			entry.Next = *p
-			*p = entry
-			log.Debug("queue elem added")
-			break
-		}
-		p = &(*p).Next
-	}
-
+	q.addToQueue(elem)
 	if !q.monitor.Signal() {
 		log.Debug("nobody waiting for queue entry")
 	}
@@ -72,33 +86,21 @@ func (q *queue[E, P]) Remove(elem P) {
 	q.monitor.Lock()
 	defer q.monitor.Unlock()
 
-	p := &q.first
-	for *p != nil {
-		if (*p).Elem == elem {
-			*p = (*p).Next
-		} else {
-			p = &(*p).Next
-		}
-	}
+	q.removeFromQueue(elem)
 }
 
 func (q *queue[E, P]) TryGet() (P, bool) {
 	q.monitor.Lock()
 	defer q.monitor.Unlock()
 
-	if q.first == nil {
-		return nil, false
-	}
-	elem := q.first.Elem
-	q.first = q.first.Next
-	return elem, true
+	return q.tryGet()
 }
 
 func (q *queue[E, P]) Get(ctx context.Context) (P, error) {
 	q.monitor.Lock()
 	defer q.monitor.Unlock()
 
-	if q.first == nil {
+	if q.list.IsEmpty() {
 		log.Debug("queue empty -> block")
 		err := q.monitor.Wait(ctx)
 		log.Debug("queue block deblocked", "error", err)
@@ -107,8 +109,7 @@ func (q *queue[E, P]) Get(ctx context.Context) (P, error) {
 		}
 	}
 
-	elem := q.first.Elem
-	q.first = q.first.Next
+	elem := q.list.RemoveFirst()
 	log.Debug("queue got element", "element", elem)
 	return elem, nil
 }
