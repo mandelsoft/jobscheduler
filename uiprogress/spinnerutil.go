@@ -3,7 +3,7 @@ package uiprogress
 import (
 	"sync"
 
-	"github.com/mandelsoft/jobscheduler/strutils"
+	"github.com/mandelsoft/goutils/stringutils"
 	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 	"github.com/mandelsoft/jobscheduler/uiprogress/specs"
 )
@@ -61,7 +61,7 @@ func (s *RawSpinner[T]) SetDone(m string) T {
 }
 
 func (s *RawSpinner[T]) SetPhases(phases ...string) T {
-	s.phases = strutils.AlignLeft(phases, ' ')
+	s.phases = stringutils.AlignLeft(phases, ' ')
 	return s.self.Self()
 }
 

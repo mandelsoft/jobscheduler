@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/fatih/color"
-	"github.com/mandelsoft/jobscheduler/strutils"
+	"github.com/mandelsoft/goutils/stringutils"
 )
 
 type ElemBaseDef[T any] struct {
@@ -99,13 +99,13 @@ func (d *ProgressBaseDef[T]) GetPrependFuncs() []DecoratorFunc {
 // AppendElapsed appends the time elapsed the be progress bar
 func (d *ProgressBaseDef[T]) AppendElapsed(offset ...int) T {
 	return d.AppendFunc(func(e Element) string {
-		return strutils.PadLeft(e.(BaseInterface).TimeElapsedString(), 5, ' ')
+		return stringutils.PadLeft(e.(BaseInterface).TimeElapsedString(), 5, ' ')
 	}, offset...)
 }
 
 // PrependElapsed prepends the time elapsed to the beginning of the bar
 func (d *ProgressBaseDef[T]) PrependElapsed(offset ...int) T {
 	return d.PrependFunc(func(e Element) string {
-		return strutils.PadLeft(e.(BaseInterface).TimeElapsedString(), 5, ' ')
+		return stringutils.PadLeft(e.(BaseInterface).TimeElapsedString(), 5, ' ')
 	}, offset...)
 }

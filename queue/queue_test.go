@@ -36,6 +36,7 @@ type entry struct {
 	name string
 	err  error
 }
+
 type Found struct {
 	lock  sync.Mutex
 	found map[string]entry

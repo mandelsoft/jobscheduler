@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/mandelsoft/jobscheduler/strutils"
+	"github.com/mandelsoft/goutils/stringutils"
 	"github.com/mandelsoft/jobscheduler/uiblocks"
 	"github.com/mandelsoft/jobscheduler/units"
 )
@@ -217,7 +217,7 @@ func (b *ProgressBase[T]) SetColor(col *color.Color) T {
 // AppendElapsed appends the time elapsed the be progress bar
 func (b *ProgressBase[T]) AppendElapsed(offset ...int) T {
 	b.AppendFunc(func(Element) string {
-		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
+		return stringutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
 	b.tick = true
 	return b.self.Self()
@@ -226,7 +226,7 @@ func (b *ProgressBase[T]) AppendElapsed(offset ...int) T {
 // PrependElapsed prepends the time elapsed to the begining of the bar
 func (b *ProgressBase[T]) PrependElapsed(offset ...int) T {
 	b.PrependFunc(func(Element) string {
-		return strutils.PadLeft(b.TimeElapsedString(), 5, ' ')
+		return stringutils.PadLeft(b.TimeElapsedString(), 5, ' ')
 	}, offset...)
 	b.tick = true
 	return b.self.Self()

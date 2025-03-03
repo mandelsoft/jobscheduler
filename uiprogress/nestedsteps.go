@@ -8,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mandelsoft/goutils/sliceutils"
-	"github.com/mandelsoft/jobscheduler/strutils"
+	"github.com/mandelsoft/goutils/stringutils"
 	"github.com/mandelsoft/jobscheduler/uiprogress/ppi"
 )
 
@@ -45,7 +45,7 @@ type NestedStep struct {
 // If NestedSteps.SetFinal is set to the empty string, only the progress of the
 // active step is shown.
 func NewNestedSteps(p Container, gap string, steptitle bool, steps ...NestedStep) NestedSteps {
-	names := strutils.AlignLeft(sliceutils.Transform(steps, func(step NestedStep) string { return step.Name }), ' ')
+	names := stringutils.AlignLeft(sliceutils.Transform(steps, func(step NestedStep) string { return step.Name }), ' ')
 
 	n := &_nestedSteps{steps: steps, names: names}
 	n.group, n.main = ppi.NewGroupBase[NestedSteps, Bar](p, n, gap, func(b *ppi.GroupBase[NestedSteps, Bar]) (Bar, bool) {

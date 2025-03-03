@@ -36,6 +36,12 @@ type Queue[E any, P QueueElement[E]] interface {
 	HasWaiting() bool
 }
 
+type SyncedQueue[E any, P QueueElement[E]] interface {
+	Queue[E, P]
+	Monitor() syncutils.Monitor
+	List() *utils.List[P]
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type queue[E any, P QueueElement[E]] struct {
@@ -45,6 +51,10 @@ type queue[E any, P QueueElement[E]] struct {
 }
 
 func New[E any, P QueueElement[E]](describe ...func(P) string) Queue[E, P] {
+	return NewSynced[E, P]()
+}
+
+func NewSynced[E any, P QueueElement[E]](describe ...func(P) string) SyncedQueue[E, P] {
 	return &queue[E, P]{monitor: syncutils.NewMutexMonitor(), describe: general.Optional(describe...)}
 }
 
@@ -52,10 +62,17 @@ func _New[E any, P QueueElement[E]](describe ...func(P) string) queue[E, P] {
 	return queue[E, P]{monitor: syncutils.NewMutexMonitor(), describe: general.Optional(describe...)}
 }
 
+func (q *queue[E, P]) Monitor() syncutils.Monitor {
+	return q.monitor
+}
+
+func (q *queue[E, P]) List() *utils.List[P] {
+	return &q.list
+}
+
 func (q *queue[E, P]) HasWaiting() bool {
 	q.monitor.Lock()
 	defer q.monitor.Unlock()
-
 	return q.monitor.HasWaiting()
 }
 

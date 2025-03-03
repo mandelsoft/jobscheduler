@@ -71,13 +71,13 @@ func (s *generalState) Elements() iter.Seq[*job] {
 
 type processorState struct {
 	lock      syncutils.Lock
-	processor *Processor
+	processor *processor
 
 	wg     sync.WaitGroup
 	cancel context.CancelFunc
 }
 
-func newProcessor(p *Processor) *processorState {
+func newProcessor(p *processor) *processorState {
 	return &processorState{lock: syncutils.NewLock(fmt.Sprintf("processor %d", p.id)), processor: p}
 }
 
@@ -88,7 +88,7 @@ func (s *processorState) Run(ctx context.Context) {
 	ctx, s.cancel = context.WithCancel(ctx)
 	s.wg.Add(1)
 	go func() {
-		s.processor.run(ctx)
+		s.processor.run(0, ctx)
 		s.wg.Done()
 
 		s.processor.scheduler.RemoveProcessor(s.processor)
@@ -116,7 +116,7 @@ type scheduler struct {
 	name       string
 	numRange   int
 	jobRange   int
-	processors map[*Processor]*processorState
+	processors map[*processor]*processorState
 
 	initial   *generalState
 	waiting   *generalState
@@ -137,7 +137,7 @@ func New(name ...string) Scheduler {
 		name: general.OptionalDefaulted("scheduler", name...),
 		lock: syncutils.NewLock(sn),
 
-		processors: map[*Processor]*processorState{},
+		processors: map[*processor]*processorState{},
 
 		initial:   newState(INITIAL),
 		ready:     &readyState{queue.New[job](func(j *job) string { return j.id })},
@@ -170,13 +170,13 @@ func (s *scheduler) Wait() {
 	}
 }
 
-func (s *scheduler) AddProcessor() *Processor {
+func (s *scheduler) AddProcessor() *processor {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.numRange++
-	p := &Processor{
+	p := &processor{
 		scheduler: s,
 		id:        s.numRange,
 	}
@@ -188,7 +188,7 @@ func (s *scheduler) AddProcessor() *Processor {
 	return p
 }
 
-func (s *scheduler) RemoveProcessor(p *Processor) {
+func (s *scheduler) RemoveProcessor(p *processor) {
 	s.lock.Lock()
 
 	state := s.processors[p]

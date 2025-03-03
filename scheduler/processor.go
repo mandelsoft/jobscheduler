@@ -4,12 +4,13 @@ import (
 	"context"
 )
 
-type Processor struct {
+type processor struct {
 	id        int
 	scheduler *scheduler
 }
 
-func (p *Processor) run(ctx context.Context) {
+func (p *processor) run(id int, ctx context.Context) {
+	p.id = id
 	sctx := SchedulingContext{
 		p.scheduler,
 	}

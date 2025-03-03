@@ -24,8 +24,8 @@ type Priority = queue.Priority
 const DEFAULT_PRIORITY Priority = 100
 
 type Scheduler interface {
-	AddProcessor() *Processor
-	RemoveProcessor(*Processor)
+	AddProcessor() *processor
+	RemoveProcessor(*processor)
 	Run(ctx context.Context) error
 
 	Apply(JobDefinition) (Job, error)

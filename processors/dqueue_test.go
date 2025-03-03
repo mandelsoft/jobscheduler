@@ -1,19 +1,60 @@
-package queue_test
+package processors_test
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
 
 	. "github.com/mandelsoft/goutils/testutils"
+	"github.com/mandelsoft/jobscheduler/processors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/mandelsoft/jobscheduler/queue"
 	"github.com/mandelsoft/logging"
 	"github.com/mandelsoft/logging/logrusl"
-
-	"github.com/mandelsoft/jobscheduler/queue"
 )
+
+type Element struct {
+	name string
+	prio queue.Priority
+}
+
+func (e *Element) GetPriority() queue.Priority {
+	return e.prio
+}
+
+func (e *Element) String() string {
+	if e == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%s[%d]", e.name, e.prio)
+}
+
+type entry struct {
+	name string
+	err  error
+}
+
+type Found struct {
+	lock  sync.Mutex
+	found map[string]entry
+}
+
+func (f *Found) Add(key string, e *Element, err error) {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	if f.found == nil {
+		f.found = map[string]entry{}
+	}
+	if e != nil {
+		f.found[key] = entry{e.name, err}
+	} else {
+		f.found[key] = entry{"", err}
+	}
+}
 
 var _ = Describe("PQueue Test Environment", func() {
 	logging.DefaultContext().SetBaseLogger(logrusl.Human(true).NewLogr())
@@ -22,10 +63,10 @@ var _ = Describe("PQueue Test Environment", func() {
 	log := logging.DefaultContext().Logger(logging.NewRealm("test"))
 
 	Context("queue", func() {
-		var q queue.DiscardQueue[Element, *Element]
+		var q processors.Queue[Element, *Element]
 
 		BeforeEach(func() {
-			q = queue.NewDiscard[Element]()
+			q, _ = processors.NewQueue[Element]()
 		})
 
 		It("continue and get", func(ctx SpecContext) {
