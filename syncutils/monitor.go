@@ -31,6 +31,12 @@ type Monitor interface {
 	// HasWaiting returns whether there is a blocked Go routine.
 	// This method MUST only be called under a monitor lock.
 	HasWaiting() bool
+
+	// SignalAll deblocks all waiting Go routines.
+	// It must be called under the monitor lock and does
+	// not transfer the lock to any deblocked Go routine.
+	// Each routine acquires a lock separately.
+	SignalAll() bool
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,6 +60,10 @@ func (w *monitor) Wait(ctx context.Context) error {
 
 func (w *monitor) Signal() bool {
 	return w.waiting.Signal(w.Locker)
+}
+
+func (w *monitor) SignalAll() bool {
+	return w.waiting.SignalAll()
 }
 
 func (w *monitor) HasWaiting() bool {

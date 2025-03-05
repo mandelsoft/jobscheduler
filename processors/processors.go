@@ -49,6 +49,8 @@ type Processors[E any] struct {
 	cancel  context.CancelFunc
 }
 
+var _ Pool = (*Processors[int])(nil)
+
 func NewProcessors[E any](ctx context.Context, creator Creator, limiter Limiter[E], n ...int) *Processors[E] {
 	ctx, cancel := context.WithCancel(ctx)
 	p := &Processors[E]{
@@ -78,10 +80,20 @@ func (p *Processors[E]) New() {
 	}()
 }
 
-func (p *Processors[E]) DiscardRequest(ctx context.Context) error {
-	return p.limiter.DiscardRequest(ctx)
+func (p *Processors[E]) Discard(ctx context.Context) error {
+	return p.limiter.Discard(ctx)
 }
 
 func (p *Processors[E]) Wait() {
 	p.done.Wait()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func (p *Processors[E]) Alloc(ctx context.Context) error {
+	return p.Discard(ctx)
+}
+
+func (p *Processors[E]) Release() {
+	p.New()
 }

@@ -76,7 +76,7 @@ var _ = Describe("PQueue Test Environment", func() {
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
 			go func() {
-				err := q.DiscardRequest(ctx)
+				err := q.DiscardGet(ctx)
 				log.Info("continue", "error", err)
 				cont["1"] = err
 				wg.Done()
@@ -114,7 +114,7 @@ var _ = Describe("PQueue Test Environment", func() {
 			rwg := &sync.WaitGroup{}
 			rwg.Add(1)
 			go func() {
-				err := q.DiscardRequest(ctx)
+				err := q.DiscardGet(ctx)
 				log.Info("continue", "error", err)
 				cont["2"] = err
 				rwg.Done()

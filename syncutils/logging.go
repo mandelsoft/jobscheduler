@@ -1,9 +1,0 @@
-package syncutils
-
-import (
-	"github.com/mandelsoft/jobscheduler/syncutils/utils"
-	"github.com/mandelsoft/logging"
-)
-
-var Realm = utils.Realm
-var log = logging.DynamicLogger(logging.DefaultContext(), Realm)

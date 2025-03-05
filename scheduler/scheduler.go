@@ -11,7 +11,7 @@ import (
 	"github.com/mandelsoft/goutils/set"
 	"github.com/mandelsoft/jobscheduler/queue"
 	"github.com/mandelsoft/jobscheduler/scheduler/condition"
-	"github.com/mandelsoft/jobscheduler/syncutils"
+	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
 
 type stateJobs interface {
@@ -70,7 +70,7 @@ func (s *generalState) Elements() iter.Seq[*job] {
 }
 
 type processorState struct {
-	lock      syncutils.Lock
+	lock      synclog.Mutex
 	processor *processor
 
 	wg     sync.WaitGroup
@@ -78,7 +78,7 @@ type processorState struct {
 }
 
 func newProcessor(p *processor) *processorState {
-	return &processorState{lock: syncutils.NewLock(fmt.Sprintf("processor %d", p.id)), processor: p}
+	return &processorState{lock: synclog.NewMutex(fmt.Sprintf("processor %d", p.id)), processor: p}
 }
 
 func (s *processorState) Run(ctx context.Context) {
@@ -109,7 +109,7 @@ func (s *processorState) Wait() {
 }
 
 type scheduler struct {
-	lock   syncutils.Lock
+	lock   synclog.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -135,7 +135,7 @@ func New(name ...string) Scheduler {
 	}
 	return &scheduler{
 		name: general.OptionalDefaulted("scheduler", name...),
-		lock: syncutils.NewLock(sn),
+		lock: synclog.NewMutex(sn),
 
 		processors: map[*processor]*processorState{},
 
@@ -266,7 +266,7 @@ func (s *scheduler) Apply(def JobDefinition) (Job, error) {
 	s.lock.Unlock()
 
 	j := &job{
-		lock:       syncutils.NewLock(fmt.Sprintf("job %s", id)),
+		lock:       synclog.NewMutex(fmt.Sprintf("job %s", id)),
 		id:         id,
 		scheduler:  s,
 		definition: def,

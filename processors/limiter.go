@@ -19,11 +19,11 @@ type Limiter[E any] interface {
 	// hast been fulfilled (true) or should be discarded (false).
 	Request(ctx context.Context) (bool, E, error)
 
-	// DiscardRequest requests one consumption request to be discarded.
+	// Discard requests one consumption request to be discarded.
 	// It blocks until a matching consumption request could be
 	// discarded. Afterward, a new Go routine can continue replacing
 	// the discarded one.
-	DiscardRequest(ctx context.Context) error
+	Discard(ctx context.Context) error
 
 	HasDiscarded() bool
 }
@@ -65,7 +65,7 @@ func (q *limiter[E]) HasDiscarded() bool {
 	return q.discard != 0
 }
 
-func (q *limiter[E]) DiscardRequest(ctx context.Context) error {
+func (q *limiter[E]) Discard(ctx context.Context) error {
 	q.monitor.Lock()
 
 	q.discard++

@@ -5,12 +5,12 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/mandelsoft/jobscheduler/syncutils"
+	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
 
 type job struct {
 	id        string
-	lock      syncutils.Lock
+	lock      synclog.Mutex
 	scheduler *scheduler
 
 	definition JobDefinition

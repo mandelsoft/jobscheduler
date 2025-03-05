@@ -8,7 +8,7 @@ import (
 
 // Queue is a queue supporting limitation of
 // the number of potential queue consumers.
-// Using DiscardRequest an additional
+// Using DiscardGet an additional
 // consumer can be added by discarding one
 // actual consumers. This means
 //   - either a waiting consumer is discarded
@@ -30,10 +30,10 @@ type Queue[E any, P queue.QueueElement[E]] interface {
 	// be discarded.
 	Get(ctx context.Context) (P, error)
 
-	// DiscardRequest requests one Get to be discarded.
+	// DiscardGet requests one Get to be discarded.
 	// It blocks until a matching Get request could be
 	// discarded.
-	DiscardRequest(ctx context.Context) error
+	DiscardGet(ctx context.Context) error
 
 	HasDiscarded() bool
 	HasWaiting() bool
@@ -51,8 +51,8 @@ func NewQueue[E any, P queue.QueueElement[E]](describe ...func(P) string) (Queue
 	return &_queue[E, P]{queue: q, limiter: l}, l
 }
 
-func (q *_queue[E, P]) DiscardRequest(ctx context.Context) error {
-	return q.limiter.DiscardRequest(ctx)
+func (q *_queue[E, P]) DiscardGet(ctx context.Context) error {
+	return q.limiter.Discard(ctx)
 }
 
 func (q *_queue[E, P]) HasDiscarded() bool {

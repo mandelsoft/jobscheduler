@@ -9,29 +9,35 @@ import (
 )
 
 type blocker struct {
-	c chan struct{}
+	locked bool
+	c      chan struct{}
 }
 
 func newBlocker() *blocker {
 	return &blocker{c: make(chan struct{}, 1)}
 }
 
-func (b *blocker) Wait(ctx context.Context) error {
+func (b *blocker) Wait(ctx context.Context) (bool, error) {
 	if ctx != nil {
 		select {
 		case <-b.c:
-			return nil
+			return b.locked, nil
 		case <-ctx.Done():
-			return ctx.Err()
+			return false, ctx.Err()
 		}
 	} else {
 		<-b.c
-		return nil
+		return b.locked, nil
 	}
 }
 
-func (b *blocker) Signal() {
+// Signal signals the blocker continue
+// a pending or upcoming Wait.
+// The signal indicated whether a lock is transferred
+// or not.
+func (b *blocker) Signal(locked bool) {
 	// b.c <- struct{}{}
+	b.locked = locked
 	close(b.c)
 }
 
@@ -42,8 +48,8 @@ type Block struct {
 	waiting *Waiting
 }
 
-func (b *Block) Wait(ctx context.Context) error {
-	err := b.blocker.Wait(ctx)
+func (b *Block) Wait(ctx context.Context) (bool, error) {
+	locked, err := b.blocker.Wait(ctx)
 
 	// remove entry.
 	// if it is still there, there was no Unblock call for this
@@ -51,9 +57,9 @@ func (b *Block) Wait(ctx context.Context) error {
 	// if the entry is already gone, there was an Unblock and a potential
 	// interfering timeout can be ignored.
 	if b.waiting.waiting.Remove(matcher.Equals(b.blocker)) {
-		return err
+		return locked, err
 	}
-	return nil
+	return locked, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,11 +108,9 @@ func (w *Waiting) Wait(ctx context.Context, opt ...sync.Locker) error {
 	if l != nil {
 		l.Unlock()
 	}
-	err := b.Wait(ctx)
-	if err != nil {
-		if l != nil {
-			l.Lock()
-		}
+	locked, err := b.Wait(ctx)
+	if !locked && l != nil {
+		l.Lock()
 	}
 	return err
 }
@@ -129,7 +133,7 @@ func (w *Waiting) Signal(opt ...sync.Locker) bool {
 		return false
 	}
 
-	w.waiting.RemoveLast().Signal()
+	w.waiting.RemoveLast().Signal(true)
 	log.Debug("deblock succeeded")
 	return true
 }
@@ -141,7 +145,7 @@ func (w *Waiting) SignalAll() bool {
 		return false
 	}
 	for !w.waiting.IsEmpty() {
-		w.waiting.RemoveFirst().Signal()
+		w.waiting.RemoveFirst().Signal(false)
 	}
 	return true
 }
