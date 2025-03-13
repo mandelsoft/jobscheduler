@@ -3,7 +3,6 @@ package processors
 import (
 	"context"
 
-	"github.com/mandelsoft/goutils/errors"
 	"github.com/mandelsoft/jobscheduler/syncutils"
 )
 
@@ -31,12 +30,22 @@ func (m *monitor) Unlock() {
 func (m *monitor) Wait(ctx context.Context) error {
 	m.pool.Release()
 	err := m.monitor.Wait(ctx)
-	err2 := m.pool.Alloc(ctx)
-	return errors.Join(err, err2)
+	// err2 := m.pool.Alloc(ctx)
+	// return errors.Join(err, err2)
+	return err
 }
 
+// Signal continues a waiting routine.
+// The lock and the processor are transferred.
+// The actual routine reallocates a processor.
+// If there is none to deblock, the lock
+// is released and the processor is kept.
 func (m *monitor) Signal() bool {
-	return m.monitor.Signal()
+	ok := m.monitor.Signal()
+	if ok {
+		m.pool.Alloc(nil) // Todo: handle abort
+	}
+	return ok
 }
 
 func (m *monitor) SignalAll() bool {
