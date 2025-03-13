@@ -9,12 +9,10 @@ var SpinnerTypes = specs.SpinnerTypes
 
 // Spinner provides one line of unlimited progress information.
 type Spinner interface {
-	ppi.ProgressInterface[Spinner]
 	RawSpinnerInterface[Spinner]
 }
 
 type _Spinner struct {
-	ppi.ProgressBase[Spinner]
 	RawSpinner[Spinner]
 	closed bool
 }
@@ -41,9 +39,14 @@ func NewSpinner(p Container, set int) Spinner {
 	b := &_Spinner{}
 
 	self := ppi.ProgressSelf[Spinner](&_spinnerProtected{b})
-	b.RawSpinner = NewRawSpinner[Spinner](self, set)
-	b.ProgressBase = ppi.NewProgressBase[Spinner](self, p, 1, nil)
+	b.RawSpinner = NewRawSpinner[Spinner](self, set, p, 1, nil)
 	return b
+}
+
+// Tick resolve ambiguous implementation from
+// ppi.ProgressBase and RawSpinner.
+func (s *_Spinner) Tick() bool {
+	return s.RawSpinner.Tick()
 }
 
 func (s *_Spinner) finalize() {

@@ -9,6 +9,8 @@ import (
 )
 
 type RawSpinnerInterface[T any] interface {
+	ppi.ProgressInterface[T]
+
 	// SetSpeed sets the spinner speed (larger = slower).
 	SetSpeed(v int) T
 
@@ -23,6 +25,8 @@ type RawSpinnerInterface[T any] interface {
 }
 
 type RawSpinner[P ppi.ProgressInterface[P]] struct {
+	ppi.ProgressBase[P]
+
 	lock sync.Mutex
 	self ppi.Self[P, ppi.ProgressProtected[P]]
 
@@ -36,17 +40,19 @@ type RawSpinner[P ppi.ProgressInterface[P]] struct {
 
 var _ RawSpinnerInterface[Spinner] = (*RawSpinner[Spinner])(nil)
 
-func NewRawSpinner[T ppi.ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtected[T]], set int) RawSpinner[T] {
+func NewRawSpinner[T ppi.ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProtected[T]], set int, p Container, view int, closer func()) RawSpinner[T] {
 	if set < 0 || SpinnerTypes[set] == nil {
 		set = 9
 	}
-	return RawSpinner[T]{
+	s := RawSpinner[T]{
 		self:   self,
 		phases: SpinnerTypes[set],
 		cnt:    specs.Speed - 1,
 		speed:  specs.Speed,
 		done:   specs.Done,
 	}
+	s.ProgressBase = ppi.NewProgressBase[T](self, p, view, closer)
+	return s
 }
 
 func (s *RawSpinner[T]) SetSpeed(v int) T {

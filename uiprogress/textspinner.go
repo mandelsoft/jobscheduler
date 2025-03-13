@@ -11,7 +11,6 @@ import (
 // a Text element. A title line reports the progress
 // followed by a text window.
 type TextSpinner interface {
-	ppi.ProgressInterface[TextSpinner]
 	RawSpinnerInterface[TextSpinner]
 
 	// SetAuto enables the automatic text window update on
@@ -26,7 +25,6 @@ type TextSpinner interface {
 }
 
 type _TextSpinner struct {
-	ppi.ProgressBase[TextSpinner]
 	RawSpinner[TextSpinner]
 	closed bool
 }
@@ -53,8 +51,7 @@ func NewTextSpinner(p Container, set int, view ...int) TextSpinner {
 	b := &_TextSpinner{}
 	self := ppi.ProgressSelf[TextSpinner](&_textSpinnerProtected{b})
 
-	b.RawSpinner = NewRawSpinner[TextSpinner](self, set)
-	b.ProgressBase = ppi.NewProgressBase[TextSpinner](self, p, general.OptionalDefaulted(3, view...), nil)
+	b.RawSpinner = NewRawSpinner[TextSpinner](self, set, p, general.OptionalDefaulted(3, view...), nil)
 	b.SetSpeed(4)
 	b.UIBlock().SetAuto()
 	return b

@@ -60,8 +60,8 @@ func (w *UIBlock) UIBlocks() *UIBlocks {
 }
 
 func (w *UIBlock) SetTitleLine(s string) *UIBlock {
-	w.blocks.lock.RLock()
-	defer w.blocks.lock.RUnlock()
+	w.blocks.lock.Lock()
+	defer w.blocks.lock.Unlock()
 
 	w.titleline = s
 	return w
@@ -208,7 +208,7 @@ func (w *UIBlock) flush(final bool) (int, error) {
 		}
 	}
 	if len(data) == 0 {
-		return 0, nil
+		return titleline, nil
 	}
 
 	linestart := make([]int, w.view)
