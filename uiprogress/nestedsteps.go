@@ -74,6 +74,10 @@ func (n *_nestedSteps) PrependCompleted() NestedSteps {
 	return n
 }
 
+func (n *_nestedSteps) Flush() error {
+	return n.group.Flush()
+}
+
 func (n *_nestedSteps) Start() Element {
 	n.lock.Lock()
 	defer n.lock.Unlock()

@@ -194,6 +194,11 @@ func (w *UIBlock) Flush() error {
 	return w.blocks.Flush()
 }
 
+type lineinfo struct {
+	start    int
+	implicit int
+}
+
 func (w *UIBlock) flush(final bool) (int, error) {
 	lines := 0
 	titleline := 0
@@ -211,29 +216,43 @@ func (w *UIBlock) flush(final bool) (int, error) {
 		return titleline, nil
 	}
 
-	linestart := make([]int, w.view)
+	implicit := 0
+	linestart := make([]lineinfo, w.view)
+
+	escapeSequence := 0
 
 	var col int
 	start := 0
-	for o, b := range data {
-		if b == '\n' {
-			linestart[lines%w.view] = start
-			start = o + 1
-			lines++
+	// fmt.Fprintf(os.Stderr, "write [%d] %q\n", len(data), string(data))
+	for o, b := range string(data) {
+		if escapeSequence == 0 {
+			escapeSequence = ColorLength(data[o:])
+		}
+		if escapeSequence == 0 && b == '\n' || (w.blocks.overFlowHandled && col >= w.blocks.termWidth) {
+			if b != '\n' {
+				implicit++
+			} else {
+				linestart[lines%w.view].start = start
+				linestart[lines%w.view].implicit = implicit
+				start = o + 1
+				lines++
+			}
 			newline = true
 			col = 0
 		} else {
+			// fmt.Fprintf(os.Stderr, "insert linebreak %d\n", col)
 			newline = false
-			col++
-			if w.blocks.overFlowHandled && col > w.blocks.termWidth {
-				lines++
-				col = 0
+			if escapeSequence > 0 {
+				escapeSequence--
+			} else {
+				col++
 			}
 		}
 	}
 
 	if !newline {
-		linestart[lines%w.view] = start
+		linestart[lines%w.view].start = start
+		linestart[lines%w.view].implicit = implicit
 		lines++
 		data = append(data, '\n')
 	}
@@ -245,12 +264,20 @@ func (w *UIBlock) flush(final bool) (int, error) {
 	var err error
 	if final || lines <= w.view {
 		_, err = w.blocks.out.Write(data)
-		return lines + titleline, err
+		eff := lines + implicit + titleline
+		// fmt.Fprintf(os.Stderr, "data: %s\n", string(data))
+		// fmt.Fprintf(os.Stderr, "eff %d, lines %d, implicit %d\n", eff, lines, implicit)
+
+		return eff, err
 	} else {
 		index := (lines) % w.view
-		start := linestart[index]
+		start := linestart[index].start
 		view := data[start:]
 		_, err = w.blocks.out.Write(view)
-		return w.view + titleline, err
+		eff := w.view + implicit - linestart[index].implicit + titleline
+		// fmt.Fprintf(os.Stderr, "data: %s\n", string(view))
+		// fmt.Fprintf(os.Stderr, "eff %d, lines %d, implicit %d\n", eff, lines, implicit)
+
+		return eff, err
 	}
 }

@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	Speed = 2
-	Done  = "done"
+	Speed   = 2
+	Done    = "done"
+	Pending = "pending"
 )
 
 // SpinnerTypes predefined spinner types.

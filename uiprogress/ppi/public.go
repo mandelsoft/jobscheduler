@@ -36,6 +36,9 @@ type BaseInterface interface {
 	// TimeElapsed.
 	TimeElapsedString() string
 
+	// Flush emits the current output.
+	Flush() error
+
 	// Wait waits until the element is finished.
 	Wait(ctx context.Context) error
 }

@@ -23,7 +23,7 @@ func main() {
 	for i, b := range bars {
 		bar := uiprogress.NewSpinner(p, b).
 			SetSpeed(1).SetColor(cols[i]).
-			PrependFunc(uiprogress.Message(fmt.Sprintf("working on %d ...", i+1))).
+			PrependFunc(uiprogress.Message(fmt.Sprintf("very long line working on %d ...", i+1))).
 			AppendElapsed()
 		bar.Start()
 		go func() {

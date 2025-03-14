@@ -92,10 +92,10 @@ func (b *ElemBase[I, P]) Close() error {
 	err := b.close()
 
 	if err == nil {
-		b.self.Protected().Update()
 		if b.closer != nil {
 			b.closer()
 		}
+		b.self.Protected().Update()
 		b.block.Close()
 	}
 	return err
@@ -126,6 +126,9 @@ func (b *ElemBase[I, P]) Wait(ctx context.Context) error {
 
 // TimeElapsed returns the time elapsed
 func (b *ElemBase[I, P]) TimeElapsed() time.Duration {
+	if !b.IsStarted() {
+		return 0
+	}
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 
@@ -144,7 +147,10 @@ func PrettyTime(t time.Duration) string {
 
 // TimeElapsedString returns the formatted string representation of the time elapsed
 func (b *ElemBase[I, P]) TimeElapsedString() string {
-	return PrettyTime(b.TimeElapsed())
+	if b.IsStarted() {
+		return PrettyTime(b.TimeElapsed())
+	}
+	return ""
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +183,7 @@ func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected[T]],
 }
 
 func (b *ProgressBase[T]) Tick() bool {
-	if b.tick && !b.closed {
+	if b.tick && !b.closed && b.IsStarted() {
 		b.self.Protected().Update()
 		return true
 	}

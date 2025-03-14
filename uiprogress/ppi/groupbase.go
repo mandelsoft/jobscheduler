@@ -79,6 +79,10 @@ func (g *GroupBase[I, T]) NewBlock(view ...int) *uiblocks.UIBlock {
 	return b
 }
 
+func (g *GroupBase[I, T]) Flush() error {
+	return g.main.Flush()
+}
+
 func (g *GroupBase[I, T]) Gap() string {
 	return g.pgap + g.followup
 }

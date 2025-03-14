@@ -36,6 +36,9 @@ type Bar interface {
 	// to the visualization.
 	PrependCompleted(offset ...int) Bar
 
+	// SetPending set sthe message shown before started
+	SetPending(m string) Bar
+
 	// SetBarConfig sets a complete character configuration for the Bar.
 	SetBarConfig(c BarConfig) Bar
 
@@ -83,6 +86,9 @@ type _Bar struct {
 	// total of the total  for the progress bar.
 	total int
 
+	// pending is the message shown before started
+	pending string
+
 	config BarConfig
 
 	// width is the width of the progress bar.
@@ -110,9 +116,10 @@ func (b *_barProtected) Visualize() (string, bool) {
 // NewBar returns a new progress bar
 func NewBar(p Container, total int) Bar {
 	b := &_Bar{
-		total:  total,
-		width:  Width,
-		config: BarTypes[0],
+		total:   total,
+		width:   Width,
+		config:  BarTypes[0],
+		pending: specs.Pending,
 	}
 	self := ppi.ProgressSelf[Bar](&_barProtected{b})
 	b.ProgressBase = ppi.NewProgressBase[Bar](self, p, 1, nil)
@@ -132,6 +139,11 @@ func (b *_Bar) PrependCompleted(offset ...int) Bar {
 	b.PrependFunc(func(b Element) string {
 		return b.(*_Bar).CompletedPercentString()
 	}, offset...)
+	return b
+}
+
+func (b *_Bar) SetPending(m string) Bar {
+	b.pending = m
 	return b
 }
 
@@ -271,6 +283,9 @@ func runeBytes(r rune) []byte {
 func (b *_Bar) _visualize() (string, bool) {
 	var buf bytes.Buffer
 
+	if !b.IsStarted() {
+		return b.pending, false
+	}
 	// render visualization
 	if b.width > 0 {
 		if b.config.LeftEnd != ' ' {

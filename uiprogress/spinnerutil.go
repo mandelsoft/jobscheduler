@@ -14,6 +14,9 @@ type RawSpinnerInterface[T any] interface {
 	// SetSpeed sets the spinner speed (larger = slower).
 	SetSpeed(v int) T
 
+	// SetPending sets the pending visualization string.
+	SetPending(string) T
+
 	// SetDone sets the done visualization string.
 	SetDone(string) T
 
@@ -30,9 +33,14 @@ type RawSpinner[P ppi.ProgressInterface[P]] struct {
 	lock sync.Mutex
 	self ppi.Self[P, ppi.ProgressProtected[P]]
 
+	// pending is the message shown before started
+	pending string
+
+	// done is the message shown after closed
+	done string
+
 	phases []string
 	speed  int
-	done   string
 
 	cnt   int
 	phase int
@@ -45,11 +53,12 @@ func NewRawSpinner[T ppi.ProgressInterface[T]](self ppi.Self[T, ppi.ProgressProt
 		set = 9
 	}
 	s := RawSpinner[T]{
-		self:   self,
-		phases: SpinnerTypes[set],
-		cnt:    specs.Speed - 1,
-		speed:  specs.Speed,
-		done:   specs.Done,
+		self:    self,
+		phases:  SpinnerTypes[set],
+		cnt:     specs.Speed - 1,
+		speed:   specs.Speed,
+		done:    specs.Done,
+		pending: specs.Pending,
 	}
 	s.ProgressBase = ppi.NewProgressBase[T](self, p, view, closer)
 	return s
@@ -63,6 +72,11 @@ func (s *RawSpinner[T]) SetSpeed(v int) T {
 
 func (s *RawSpinner[T]) SetDone(m string) T {
 	s.done = m
+	return s.self.Self()
+}
+
+func (s *RawSpinner[T]) SetPending(m string) T {
+	s.pending = m
 	return s.self.Self()
 }
 
@@ -83,7 +97,7 @@ func Visualize[T ppi.ProgressInterface[T]](s *RawSpinner[T]) (string, bool) {
 		return s.done, true
 	}
 	if !s.self.Self().IsStarted() {
-		return "", false
+		return s.pending, false
 	}
 	return s.phases[s.phase], false
 }
@@ -92,7 +106,6 @@ func (s *RawSpinner[T]) Tick() bool {
 	if s.self.Self().IsClosed() {
 		return false
 	}
-	s.self.Self().Start()
 	s.lock.Lock()
 
 	s.cnt++

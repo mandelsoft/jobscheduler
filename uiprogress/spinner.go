@@ -43,12 +43,6 @@ func NewSpinner(p Container, set int) Spinner {
 	return b
 }
 
-// Tick resolve ambiguous implementation from
-// ppi.ProgressBase and RawSpinner.
-func (s *_Spinner) Tick() bool {
-	return s.RawSpinner.Tick()
-}
-
 func (s *_Spinner) finalize() {
 	s._update()
 }
