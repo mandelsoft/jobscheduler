@@ -63,6 +63,9 @@ type Estimated interface {
 	// to zero only the prepended and appended information is shown.
 	SetWidth(n uint) Estimated
 
+	TimeEstimated() time.Duration
+	TimeEstimatedString() string
+
 	IsFinished() bool
 	Set(n time.Duration) bool
 
@@ -209,6 +212,13 @@ func (b *_Estimated) AppendEstimated(offset ...int) Estimated {
 		return stringutils.PadLeft(b.TimeEstimatedString(), 5, ' ')
 	}, offset...)
 	return b
+}
+
+func (b *_Estimated) TimeEstimated() time.Duration {
+	if b.IsStarted() {
+		return b.Total() - b.TimeElapsed()
+	}
+	return b.Total()
 }
 
 // TimeEstimatedString returns the formatted string representation of the time elapsed

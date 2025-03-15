@@ -30,10 +30,14 @@ func (d *BarDefinition) Add(c Container, total ...int) Bar {
 	if v := d.GetColor(); v != nil {
 		s.SetColor(v)
 	}
-
-	if v := d.GetConfig(); v != nil {
-		s.SetBarConfig(*v)
+	if v := d.GetPending(); v != "" {
+		s.SetPending(v)
 	}
+	if v := d.GetWidth(); v != 0 {
+		s.SetWidth(v)
+	}
+
+	s.SetBarConfig(d.GetConfig())
 
 	for _, f := range d.GetAppendFuncs() {
 		s.AppendFunc(f)
