@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/stringutils"
 	"github.com/mandelsoft/jobscheduler/uiblocks"
 	"github.com/mandelsoft/jobscheduler/units"
@@ -178,8 +179,8 @@ type ProgressBase[T ProgressInterface[T]] struct {
 	tick         bool
 }
 
-func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected[T]], p Container, view int, closer func()) ProgressBase[T] {
-	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected[T]](self, p, view, closer)}
+func NewProgressBase[T ProgressInterface[T]](self Self[T, ProgressProtected[T]], p Container, view int, closer func(), tick ...bool) ProgressBase[T] {
+	return ProgressBase[T]{ElemBase: NewElemBase[T, ProgressProtected[T]](self, p, view, closer), tick: general.Optional(tick...)}
 }
 
 func (b *ProgressBase[T]) Tick() bool {
