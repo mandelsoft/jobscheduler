@@ -11,7 +11,12 @@ import (
 	"github.com/mandelsoft/goutils/general"
 )
 
-// UIBlocks is a buffered the writer that updates the terminal. The contents of writer will be flushed on a timed interval or when Flush is called.
+// UIBlocks is a sequences of UIBlock/s which represent a trailing range of
+// lines on a terminal output given by am output steam. The stream is written to
+// update the covered terminal lines with the actual context of the included
+// UIBlock/s.
+// The contents of the UIBlock/s will be flushed on a timed interval or when
+// Flush is called.
 type UIBlocks struct {
 	lock sync.RWMutex
 
@@ -71,36 +76,76 @@ func (w *UIBlocks) listen() {
 	}
 }
 
+// NewBlock returns a new UIBlock assigned to this UIBlocks.
 func (w *UIBlocks) NewBlock(view ...int) *UIBlock {
-	return w.addBlock(nil, 0, view...)
+	return w.createBlock(nil, 0, view...)
 }
 
-func (w *UIBlocks) AppendBlock(p *UIBlock, view ...int) *UIBlock {
-	return w.addBlock(p, 1, view...)
+// NewAppendedBlock creates a new assigned UIBlock added after the
+// given parent block.
+func (w *UIBlocks) NewAppendedBlock(p *UIBlock, view ...int) *UIBlock {
+	return w.createBlock(p, 1, view...)
 }
 
-func (w *UIBlocks) InsertBlock(p *UIBlock, view ...int) *UIBlock {
-	return w.addBlock(p, 0, view...)
+// NewInsertedBlock creates a new assigned UIBlock added before the
+// given parent block.
+func (w *UIBlocks) NewInsertedBlock(p *UIBlock, view ...int) *UIBlock {
+	return w.createBlock(p, 0, view...)
 }
 
-func (w *UIBlocks) addBlock(p *UIBlock, offset int, view ...int) *UIBlock {
+func (w *UIBlocks) createBlock(p *UIBlock, offset int, view ...int) *UIBlock {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
 	if w.closed {
 		return nil
 	}
-	b := newBlock(w, view...)
+	b := NewBlock(view...)
+	w._addBlock(b, p, offset)
+	return b
+}
+
+// AppendBlock adds an assigned UIBlock after the
+// given parent block.
+func (w *UIBlocks) AppendBlock(b *UIBlock, p *UIBlock) error {
+	return w.addBlock(b, p, 1)
+}
+
+// InsertBlock adds an unassigned UIBlock before the
+// given parent block.
+func (w *UIBlocks) InsertBlock(b *UIBlock, p *UIBlock, view ...int) error {
+	return w.addBlock(b, p, 0)
+}
+
+func (w *UIBlocks) AddBlock(b *UIBlock) error {
+	return w.addBlock(b, nil, 0)
+}
+
+func (w *UIBlocks) addBlock(b *UIBlock, p *UIBlock, offset int) error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	if w.closed {
+		return nil
+	}
+	return w._addBlock(b, p, offset)
+}
+
+func (w *UIBlocks) _addBlock(b *UIBlock, p *UIBlock, offset int) error {
+	if !b.blocks.CompareAndSwap(nil, w) {
+		return ErrAlreadyAssigned
+	}
+
 	if p != nil {
 		for i := range w.blocks {
 			if w.blocks[i] == p {
 				w.blocks = append(w.blocks[:i+offset], append([]*UIBlock{b}, w.blocks[i+offset:]...)...)
-				return b
+				return nil
 			}
 		}
 	}
 	w.blocks = append(w.blocks, b)
-	return b
+	return nil
 }
 
 func (w *UIBlocks) Blocks() []*UIBlock {
@@ -116,6 +161,10 @@ func (w *UIBlocks) TermWidth() int {
 	return w.termWidth
 }
 
+// Close closed the line range.
+// No UIBlocks can be added anymore, and the
+// UIBlocls object is done, when all included UIBlock/s
+// are closed.
 func (w *UIBlocks) Close() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
@@ -127,6 +176,10 @@ func (w *UIBlocks) Close() error {
 	return nil
 }
 
+// Wait waits until the object and all included
+// UIBlock/s are closed.
+// If a context.Context is given it returns
+// if the context is done, also.
 func (w *UIBlocks) Wait(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -146,7 +199,7 @@ func (w *UIBlocks) discardBlock() error {
 			w.clearLines()
 			discarded = true
 		}
-		w.blocks[0].flush(true)
+		w.blocks[0].emit(true)
 		w.blocks = w.blocks[1:]
 	}
 	if discarded {
@@ -172,7 +225,7 @@ func (w *UIBlocks) Flush() error {
 func (w *UIBlocks) flush() error {
 	lines := 0
 	for _, b := range w.blocks {
-		l, err := b.flush(false)
+		l, err := b.emit(false)
 		lines += l
 		if err != nil {
 			return err

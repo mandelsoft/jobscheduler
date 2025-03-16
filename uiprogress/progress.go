@@ -75,7 +75,7 @@ func (p *_progress) UIBlocks() *uiblocks.UIBlocks {
 }
 
 func (p *_progress) NewBlock(view ...int) *uiblocks.UIBlock {
-	return p.blocks.InsertBlock(nil, view...)
+	return p.blocks.NewInsertedBlock(nil, view...)
 }
 
 func (p *_progress) Done() <-chan struct{} {

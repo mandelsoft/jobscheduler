@@ -69,7 +69,7 @@ func (g *GroupBase[I, T]) NewBlock(view ...int) *uiblocks.UIBlock {
 		for n.Next() != nil && n.Next() != n {
 			n = n.Next()
 		}
-		b = g.blocks[0].UIBlocks().AppendBlock(n, view...).
+		b = g.blocks[0].UIBlocks().NewAppendedBlock(n, view...).
 			SetGap(g.pgap + g.gap).SetFollowUpGap(g.pgap + g.followup)
 	}
 	if b != nil {

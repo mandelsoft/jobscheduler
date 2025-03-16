@@ -8,10 +8,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mandelsoft/goutils/atomic"
 	"github.com/mandelsoft/goutils/general"
 )
 
 const DefaultView = 10
+
+var ErrNotAssigned = errors.New("uiblock not assigned")
+var ErrAlreadyAssigned = errors.New("uiblock already assigned")
 
 // ESC is the ASCII code for escape character
 const ESC = 27
@@ -26,9 +30,9 @@ type FdWriter interface {
 }
 
 type UIBlock struct {
+	blocks      atomic.Value[*UIBlocks]
 	titleline   string
 	view        int
-	blocks      *UIBlocks
 	payload     any
 	next        *UIBlock
 	auto        bool
@@ -47,37 +51,63 @@ type UIBlock struct {
 
 type block = UIBlock
 
-func newBlock(w *UIBlocks, view ...int) *UIBlock {
+// NewBlock provides a new UIBlock not yet assigned to any UIBlocks
+// object. A UIBlock can only be assigned once.
+func NewBlock(view ...int) *UIBlock {
 	return &UIBlock{
-		blocks:    w,
 		startline: true,
 		view:      general.OptionalDefaulted(DefaultView, view...),
 		done:      make(chan struct{})}
 }
 
+func (w *UIBlock) lock() func() {
+	b := w.blocks.Load()
+	if b == nil {
+		return func() {}
+	}
+
+	b.lock.Lock()
+	return b.lock.Unlock
+}
+
+func (w *UIBlock) rlock() func() {
+	b := w.blocks.Load()
+	if b == nil {
+		return func() {}
+	}
+
+	b.lock.RLock()
+	return b.lock.RUnlock
+}
+
 func (w *UIBlock) UIBlocks() *UIBlocks {
-	return w.blocks
+	return w.blocks.Load()
 }
 
 func (w *UIBlock) SetTitleLine(s string) *UIBlock {
-	w.blocks.lock.Lock()
-	defer w.blocks.lock.Unlock()
+	defer w.lock()()
 
 	w.titleline = s
 	return w
 }
 
 func (w *UIBlock) SetFinal(data string) *UIBlock {
+	defer w.lock()()
+
 	w.final = []byte(data)
 	return w
 }
 
 func (w *UIBlock) SetAuto(b ...bool) *UIBlock {
+	defer w.lock()()
+
 	w.auto = general.OptionalDefaultedBool(true, b...)
 	return w
 }
 
 func (w *UIBlock) SetGap(gap string) *UIBlock {
+	defer w.lock()()
+
 	w.gap = gap
 	if w.followupGap == "" {
 		w.followupGap = gap
@@ -86,47 +116,52 @@ func (w *UIBlock) SetGap(gap string) *UIBlock {
 }
 
 func (w *UIBlock) SetFollowUpGap(gap string) *UIBlock {
+	defer w.lock()()
+
 	w.followupGap = gap
 	return w
 }
 
 func (w *UIBlock) SetContentGap(gap string) *UIBlock {
+	defer w.lock()()
+
 	w.contentGap = gap
 	return w
 }
 
 func (w *UIBlock) SetPayload(p any) *UIBlock {
+	defer w.lock()()
+
 	w.payload = p
 	return w
 }
 
 func (w *UIBlock) Payload() any {
+	defer w.rlock()()
+
 	return w.payload
 }
 
 func (w *UIBlock) SetNext(n *UIBlock) {
-	w.blocks.lock.Lock()
-	defer w.blocks.lock.Unlock()
+	defer w.lock()()
+
 	w.next = n
 }
 
 func (w *UIBlock) Next() *UIBlock {
-	w.blocks.lock.RLock()
-	defer w.blocks.lock.RUnlock()
+	defer w.rlock()()
 	return w.next
 }
 
 func (w *UIBlock) Reset() {
-	w.blocks.lock.Lock()
-	defer w.blocks.lock.Unlock()
+	defer w.lock()()
 	w.startline = true
 	w.buf.Reset()
 }
 
 // Write save the contents of buf to the writer b. The only errors returned are ones encountered while writing to the underlying buffer.
 func (w *UIBlock) Write(buf []byte) (n int, err error) {
-	w.blocks.lock.Lock()
-	defer w.blocks.lock.Unlock()
+	defer w.lock()()
 	if w.closed {
 		return 0, os.ErrClosed
 	}
@@ -156,25 +191,37 @@ func (w *UIBlock) Write(buf []byte) (n int, err error) {
 		n, err = w.buf.Write(buf)
 	}
 	if w.auto {
-		w.blocks.requestFlush()
+		w.requestFlush()
 	}
 	return n, err
 }
 
+func (w *UIBlock) requestFlush() {
+	b := w.blocks.Load()
+	if b != nil {
+		b.requestFlush()
+	}
+}
+
 func (w *UIBlock) Close() error {
-	w.blocks.lock.Lock()
-	defer w.blocks.lock.Unlock()
+	b := w.blocks.Load()
+	if b != nil {
+		b.lock.Lock()
+		defer b.lock.Unlock()
+	}
 	if w.closed {
 		return os.ErrClosed
 	}
 	w.closed = true
 	close(w.done)
-	return w.blocks.discardBlock()
+	if b != nil {
+		return b.discardBlock()
+	}
+	return nil
 }
 
 func (w *UIBlock) IsClosed() bool {
-	w.blocks.lock.Lock()
-	defer w.blocks.lock.Unlock()
+	defer w.rlock()()
 	return w.closed
 }
 
@@ -191,7 +238,11 @@ func (w *UIBlock) Wait(ctx context.Context) error {
 }
 
 func (w *UIBlock) Flush() error {
-	return w.blocks.Flush()
+	b := w.blocks.Load()
+	if b == nil {
+		return ErrNotAssigned
+	}
+	return b.Flush()
 }
 
 type lineinfo struct {
@@ -199,7 +250,9 @@ type lineinfo struct {
 	implicit int
 }
 
-func (w *UIBlock) flush(final bool) (int, error) {
+func (w *UIBlock) emit(final bool) (int, error) {
+	blocks := w.blocks.Load()
+
 	lines := 0
 	titleline := 0
 	newline := false
@@ -208,7 +261,7 @@ func (w *UIBlock) flush(final bool) (int, error) {
 		data = w.final
 	} else {
 		if w.titleline != "" {
-			w.blocks.out.Write([]byte(w.gap + w.titleline + "\n"))
+			blocks.out.Write([]byte(w.gap + w.titleline + "\n"))
 			titleline = 1
 		}
 	}
@@ -228,7 +281,7 @@ func (w *UIBlock) flush(final bool) (int, error) {
 		if escapeSequence == 0 {
 			escapeSequence = ColorLength(data[o:])
 		}
-		if escapeSequence == 0 && b == '\n' || (w.blocks.overFlowHandled && col >= w.blocks.termWidth) {
+		if escapeSequence == 0 && b == '\n' || (blocks.overFlowHandled && col >= blocks.termWidth) {
 			if b != '\n' {
 				implicit++
 			} else {
@@ -263,7 +316,7 @@ func (w *UIBlock) flush(final bool) (int, error) {
 
 	var err error
 	if final || lines <= w.view {
-		_, err = w.blocks.out.Write(data)
+		_, err = blocks.out.Write(data)
 		eff := lines + implicit + titleline
 		// fmt.Fprintf(os.Stderr, "data: %s\n", string(data))
 		// fmt.Fprintf(os.Stderr, "eff %d, lines %d, implicit %d\n", eff, lines, implicit)
@@ -273,7 +326,7 @@ func (w *UIBlock) flush(final bool) (int, error) {
 		index := (lines) % w.view
 		start := linestart[index].start
 		view := data[start:]
-		_, err = w.blocks.out.Write(view)
+		_, err = blocks.out.Write(view)
 		eff := w.view + implicit - linestart[index].implicit + titleline
 		// fmt.Fprintf(os.Stderr, "data: %s\n", string(view))
 		// fmt.Fprintf(os.Stderr, "eff %d, lines %d, implicit %d\n", eff, lines, implicit)
