@@ -5,8 +5,8 @@
 // to a terminal. It can be used to add an arbitrary
 // number of progress indicators.
 //
-// Package github.com/mandelsoft/jobscheduler/uiprogress/ppi provides some support types, which
-// can be used to provide own progress indicators
+// Package github.com/mandelsoft/jobscheduler/uiprogress/ppi provides some
+// support types, which can be used to provide own progress indicators
 // to enrich the set of indicators provided by this
 // package.
 package uiprogress
