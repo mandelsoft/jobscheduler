@@ -46,7 +46,7 @@ var _ = Describe("Limit Pool Test Environment", func() {
 		Expect(time.Now().Sub(now)).To(BeNumerically(">", 1000*time.Millisecond))
 	}, SpecTimeout(3*time.Second))
 
-	FIt("limit 2", func(ctx SpecContext) {
+	It("limit 2", func(ctx SpecContext) {
 		lock := processors.NewMutex(pool)
 		MustBeSuccessful(lock.Lock(ctx))
 
