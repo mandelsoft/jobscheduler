@@ -55,12 +55,11 @@ func (d *BarDefinition) AddWithTotal(c Container, total int) (Bar, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// _Bar represents a progress bar
-type _Bar[T ppi.ProgressInterface] struct {
+type barBase[T ppi.ProgressInterface, V any] struct {
 	ppi.ProgressBase[T]
 
 	// total of the total  for the progress bar.
-	total int
+	total V
 
 	// pending is the message shown before started
 	pending string
@@ -69,6 +68,20 @@ type _Bar[T ppi.ProgressInterface] struct {
 
 	// width is the width of the progress bar.
 	width uint
+}
+
+func (b *barBase[T, V]) Total() V {
+	b.Lock.RLock()
+	defer b.Lock.RUnlock()
+
+	return b.total
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// _Bar represents a progress bar
+type _Bar[T ppi.ProgressInterface] struct {
+	barBase[T, int]
 
 	current int
 }
@@ -98,10 +111,12 @@ func newBar(p Container, c specs.BarConfiguration, total ...int) (Bar, error) {
 
 func newBarBase[T ppi.ProgressInterface](p Container, c specs.BarBaseConfiguration, total int, self func(*_Bar[T]) ppi.Self[T, ppi.ProgressProtected[T]]) (*_Bar[T], error) {
 	e := &_Bar[T]{
-		total:   total,
-		width:   c.GetWidth(),
-		config:  c.GetConfig(),
-		pending: c.GetPending(),
+		barBase: barBase[T, int]{
+			total:   total,
+			width:   c.GetWidth(),
+			config:  c.GetConfig(),
+			pending: c.GetPending(),
+		},
 	}
 	b, err := ppi.NewProgressBase[T](self(e), p, c, 1, nil)
 	if err != nil {
@@ -169,13 +184,6 @@ func (b *_Bar[T]) Current() int {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.current
-}
-
-// Total returns the expected goal.
-func (b *_Bar[T]) Total() int {
-	b.Lock.RLock()
-	defer b.Lock.RUnlock()
-	return b.total
 }
 
 func (b *_Bar[T]) _update() bool {

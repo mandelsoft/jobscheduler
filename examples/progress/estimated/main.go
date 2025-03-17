@@ -4,16 +4,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiprogress"
+	"github.com/mandelsoft/jobscheduler/ttyprogress"
 )
 
 func main() {
-	p := uiprogress.New(os.Stdout)
+	p := ttyprogress.New(os.Stdout)
 
 	total := 10 * time.Second
-	bar := uiprogress.NewEstimated(p, total).SetPredefined(10).
-		PrependFunc(uiprogress.Message("Downloading...")).PrependEstimated().
-		AppendCompleted().AppendElapsed().SetWidth(uiprogress.ReserveTerminalSize(40))
+	bar, _ := ttyprogress.NewEstimated(total).
+		SetWidth(ttyprogress.ReserveTerminalSize(40)).
+		SetPredefined(10).
+		PrependFunc(ttyprogress.Message("Downloading...")).
+		PrependEstimated().
+		AppendCompleted().
+		AppendElapsed().
+		Add(p)
 	bar.Start()
 	p.Close()
 

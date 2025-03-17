@@ -1,7 +1,7 @@
 package specs
 
 type BarInterface interface {
-	BarBaseInterface
+	BarBaseInterface[int]
 
 	IsFinished() bool
 	Set(n int) bool

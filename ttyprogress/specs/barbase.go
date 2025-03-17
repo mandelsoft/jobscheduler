@@ -1,9 +1,13 @@
 package specs
 
-type BarBaseInterface interface {
-	ProgressInterface
-	Current() int
+type CompletedPercent interface {
 	CompletedPercent() float64
+}
+
+type BarBaseInterface[T any] interface {
+	ProgressInterface
+	CompletedPercent
+	Current() T
 }
 
 type BarBaseDefinition[T any] struct {
@@ -35,15 +39,15 @@ func (d *BarBaseDefinition[T]) Dup(s Self[T]) BarBaseDefinition[T] {
 // AppendCompleted appends the completion percent to the progress bar
 func (d *BarBaseDefinition[T]) AppendCompleted(offset ...int) T {
 	d.AppendFunc(func(b ElementInterface) string {
-		return PercentString(b.(BarBaseInterface).CompletedPercent())
+		return PercentString(b.(CompletedPercent).CompletedPercent())
 	}, offset...)
 	return d.Self()
 }
 
-// PrependCompleted prepends the precent completed to the progress bar
+// PrependCompleted prepends the percent completed to the progress bar
 func (d *BarBaseDefinition[T]) PrependCompleted(offset ...int) T {
 	d.PrependFunc(func(b ElementInterface) string {
-		return PercentString(b.(BarBaseInterface).CompletedPercent())
+		return PercentString(b.(CompletedPercent).CompletedPercent())
 	}, offset...)
 	return d.Self()
 }
