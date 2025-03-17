@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mandelsoft/jobscheduler/ttyprogress"
+	"github.com/mandelsoft/jobscheduler/units"
 )
 
 func main() {
@@ -12,12 +13,15 @@ func main() {
 
 	bar, _ := ttyprogress.NewBar().
 		SetPredefined(10).
+		SetTotal(500).
 		SetWidth(ttyprogress.PercentTerminalSize(30)).
-		PrependFunc(ttyprogress.Message("Downloading...")).PrependElapsed().AppendCompleted().
+		PrependFunc(ttyprogress.Message("Downloading...")).
+		PrependElapsed().AppendCompleted().
+		AppendFunc(ttyprogress.Amount(units.Bytes(1024))).
 		Add(p)
 
 	for i := 0; i <= 20; i++ {
-		bar.Set(i * 5)
+		bar.Set(i * 5 * 5)
 		time.Sleep(time.Millisecond * 500)
 	}
 }

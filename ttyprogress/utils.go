@@ -2,6 +2,7 @@ package ttyprogress
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/jobscheduler/uiblocks"
@@ -53,4 +54,13 @@ func ReserveTerminalSize(r uint) uint {
 		return 10
 	}
 	return uint(s)
+}
+
+// SimpleProgress creates and displays a single progress element according
+// to the given specification.
+func SimpleProgress[T Element](w io.Writer, e ElementSpecification[T]) T {
+	p := New(w)
+	b, _ := e.Add(p)
+	p.Close()
+	return b
 }

@@ -17,7 +17,7 @@ type SpinnerDefinition struct {
 
 func NewSpinner() *SpinnerDefinition {
 	d := &SpinnerDefinition{}
-	d.SpinnerDefinition = specs.NewSpinnerDefinition[*SpinnerDefinition](specs.NewSelf(d))
+	d.SpinnerDefinition = specs.NewSpinnerDefinition(specs.NewSelf(d))
 	return d
 }
 

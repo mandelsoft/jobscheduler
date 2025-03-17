@@ -35,7 +35,7 @@ type BarDefinition struct {
 
 func NewBar() *BarDefinition {
 	d := &BarDefinition{}
-	d.BarDefinition = specs.NewBarDefinition[*BarDefinition](specs.NewSelf[*BarDefinition](d))
+	d.BarDefinition = specs.NewBarDefinition(specs.NewSelf(d))
 	return d
 }
 
@@ -56,8 +56,8 @@ func (d *BarDefinition) AddWithTotal(c Container, total int) (Bar, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // _Bar represents a progress bar
-type _Bar struct {
-	ppi.ProgressBase[Bar]
+type _Bar[T ppi.ProgressInterface] struct {
+	ppi.ProgressBase[T]
 
 	// total of the total  for the progress bar.
 	total int
@@ -74,7 +74,7 @@ type _Bar struct {
 }
 
 type _barProtected struct {
-	*_Bar
+	*_Bar[Bar]
 }
 
 func (b *_barProtected) Self() Bar {
@@ -91,14 +91,19 @@ func (b *_barProtected) Visualize() (string, bool) {
 
 // newBar returns a new progress bar
 func newBar(p Container, c specs.BarConfiguration, total ...int) (Bar, error) {
-	e := &_Bar{
-		total:   general.OptionalDefaulted(c.GetTotal(), total...),
+	return newBarBase[Bar](p, c, general.OptionalDefaulted(c.GetTotal(), total...), func(e *_Bar[Bar]) ppi.Self[Bar, ppi.ProgressProtected[Bar]] {
+		return ppi.ProgressSelf[Bar](&_barProtected{e})
+	})
+}
+
+func newBarBase[T ppi.ProgressInterface](p Container, c specs.BarBaseConfiguration, total int, self func(*_Bar[T]) ppi.Self[T, ppi.ProgressProtected[T]]) (*_Bar[T], error) {
+	e := &_Bar[T]{
+		total:   total,
 		width:   c.GetWidth(),
 		config:  c.GetConfig(),
 		pending: c.GetPending(),
 	}
-	self := ppi.ProgressSelf[Bar](&_barProtected{e})
-	b, err := ppi.NewProgressBase[Bar](self, p, c, 1, nil)
+	b, err := ppi.NewProgressBase[T](self(e), p, c, 1, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +112,7 @@ func newBar(p Container, c specs.BarConfiguration, total ...int) (Bar, error) {
 }
 
 // Set the current count of the bar. It returns ErrMaxCurrentReached when trying n exceeds the total value. This is atomic operation and concurrency safe.
-func (b *_Bar) Set(n int) bool {
+func (b *_Bar[T]) Set(n int) bool {
 	b.Start()
 
 	b.Lock.Lock()
@@ -125,7 +130,7 @@ func (b *_Bar) Set(n int) bool {
 }
 
 // Incr increments the current value by 1, time elapsed to current time and returns true. It returns false if the cursor has reached or exceeds total value.
-func (b *_Bar) Incr() bool {
+func (b *_Bar[T]) Incr() bool {
 	b.Start()
 	b.Lock.Lock()
 
@@ -143,13 +148,13 @@ func (b *_Bar) Incr() bool {
 	return false
 }
 
-func (b *_Bar) IsFinished() bool {
+func (b *_Bar[T]) IsFinished() bool {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.current == b.total
 }
 
-func (b *_Bar) incr() bool {
+func (b *_Bar[T]) incr() bool {
 	if b.current == b.total {
 		return false
 	}
@@ -160,28 +165,28 @@ func (b *_Bar) incr() bool {
 }
 
 // Current returns the current progress of the bar
-func (b *_Bar) Current() int {
+func (b *_Bar[T]) Current() int {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.current
 }
 
 // Total returns the expected goal.
-func (b *_Bar) Total() int {
+func (b *_Bar[T]) Total() int {
 	b.Lock.RLock()
 	defer b.Lock.RUnlock()
 	return b.total
 }
 
-func (b *_Bar) _update() bool {
-	return ppi.Update[Bar](&b.ProgressBase)
+func (b *_Bar[T]) _update() bool {
+	return ppi.Update[T](&b.ProgressBase)
 }
 
 func runeBytes(r rune) []byte {
 	return []byte(string(r))
 }
 
-func (b *_Bar) _visualize() (string, bool) {
+func (b *_Bar[T]) _visualize() (string, bool) {
 	var buf bytes.Buffer
 
 	if !b.IsStarted() {
@@ -217,6 +222,6 @@ func (b *_Bar) _visualize() (string, bool) {
 }
 
 // CompletedPercent return the percent completed
-func (b *_Bar) CompletedPercent() float64 {
+func (b *_Bar[T]) CompletedPercent() float64 {
 	return (float64(b.Current()) / float64(b.total)) * 100.00
 }

@@ -23,7 +23,7 @@ type TextDefinition struct {
 
 func NewText() *TextDefinition {
 	d := &TextDefinition{}
-	d.TextDefinition = specs.NewTextDefinition[*TextDefinition](specs.NewSelf(d))
+	d.TextDefinition = specs.NewTextDefinition(specs.NewSelf(d))
 	return d
 }
 

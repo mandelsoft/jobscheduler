@@ -4,13 +4,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiprogress"
+	"github.com/mandelsoft/jobscheduler/ttyprogress"
 )
 
 func main() {
-	p := uiprogress.New(os.Stdout)
+	p := ttyprogress.New(os.Stdout)
 
-	bar := uiprogress.NewSteps(p, "downloading", "unpacking", "installing", "verifying").PrependFunc(uiprogress.Message("progressbar"), 0).PrependElapsed().AppendCompleted()
+	bar, _ := ttyprogress.NewSteps("downloading", "unpacking", "installing", "verifying").
+		PrependStep().
+		PrependFunc(ttyprogress.Message("progressbar"), 0).
+		PrependElapsed().AppendCompleted().
+		Add(p)
 
 	bar.Start()
 	for i := 0; i < 4; i++ {

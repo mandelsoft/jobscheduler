@@ -16,6 +16,10 @@ type Ticker interface {
 	Tick() bool
 }
 
+type Dupper[T any] interface {
+	Dup() T
+}
+
 type ElementSpecification[T Element] interface {
 	Add(Container) (T, error)
 }
