@@ -3,6 +3,8 @@ package specs
 type BarInterface interface {
 	BarBaseInterface
 
+	Current() int
+
 	IsFinished() bool
 	Set(n int) bool
 	Incr() bool

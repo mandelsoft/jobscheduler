@@ -71,6 +71,25 @@ func (e *ElementDefinition[T]) GetFinal() string {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// TitleLineProvider is the optional interface to provide a title line configuration
+// enriching the element configuration.
+type TitleLineProvider interface {
+	GetTitleLine() string
+}
+
+// GapProvider is the optional interface to provide an indent
+// enriching the element configuration.
+type GapProvider interface {
+	GetGap() string
+}
+
+// FollowupGapProvider is the optional interface to provide an indent
+// for additional lines
+// enriching the element configuration.
+type FollowupGapProvider interface {
+	GetFollowUpGap() string
+}
+
 type ElementSpecification[T any] interface {
 	// SetFinal sets a text message shown instead of the
 	// text window after the action has been finished.

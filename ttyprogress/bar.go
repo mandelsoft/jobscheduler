@@ -27,14 +27,6 @@ var (
 // relation to a known maximum of required work.
 type Bar interface {
 	specs.BarInterface
-
-	Current() int
-	IsFinished() bool
-	Set(n int) bool
-	Incr() bool
-
-	Close() error
-	IsClosed() bool
 }
 
 type BarDefinition struct {

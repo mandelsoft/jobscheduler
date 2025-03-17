@@ -7,4 +7,5 @@ var (
 	BarType      = 0
 	SpinnerSpeed = 2
 	SpinnerType  = 9
+	TextView     = 3
 )

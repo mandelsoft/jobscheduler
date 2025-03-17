@@ -5,13 +5,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiprogress"
+	"github.com/mandelsoft/jobscheduler/ttyprogress"
 )
 
 func main() {
-	p := uiprogress.New(os.Stdout)
+	p := ttyprogress.New(os.Stdout)
 
-	text := uiprogress.NewText(p, 3).SetAuto()
+	text, _ := ttyprogress.NewText().
+		SetTitleLine("some output").
+		SetFollowUpGap("> ").
+		SetView(3).
+		SetAuto().Add(p)
 
 	for i := 0; i <= 20; i++ {
 		fmt.Fprintf(text, "doing step %d\n", i)

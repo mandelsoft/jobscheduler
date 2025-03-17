@@ -24,6 +24,12 @@ func ElementSelf[I ElementInterface, P ElementProtected[I]](p P) Self[I, P] {
 	return Self[I, P]{p}
 }
 
+type (
+	TitleLineProvider   = specs.TitleLineProvider
+	GapProvider         = specs.GapProvider
+	FollowupGapProvider = specs.FollowupGapProvider
+)
+
 type ElemBase[I ElementInterface, P ElementProtected[I]] struct {
 	Lock sync.RWMutex
 
@@ -49,6 +55,15 @@ func NewElemBase[I ElementInterface, P ElementProtected[I]](self Self[I, P], p C
 	b.SetPayload(self.Self())
 	if c.GetFinal() != "" {
 		b.SetFinal(c.GetFinal())
+	}
+	if t, ok := c.(TitleLineProvider); ok && t.GetTitleLine() != "" {
+		b.SetTitleLine(t.GetTitleLine())
+	}
+	if t, ok := c.(GapProvider); ok && t.GetGap() != "" {
+		b.SetGap(t.GetGap())
+	}
+	if t, ok := c.(FollowupGapProvider); ok && t.GetFollowUpGap() != "" {
+		b.SetFollowUpGap(t.GetFollowUpGap())
 	}
 
 	if err := p.AddBlock(b); err != nil {
