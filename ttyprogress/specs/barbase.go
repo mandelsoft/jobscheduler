@@ -23,7 +23,7 @@ var _ BarBaseSpecification[any] = (*BarBaseDefinition[any])(nil)
 // for a derived bar definition.
 func NewBarBaseDefinition[T any](self Self[T]) BarBaseDefinition[T] {
 	return BarBaseDefinition[T]{
-		ProgressDefinition: NewProgressDefinition[T](self),
+		ProgressDefinition: NewProgressDefinition(self),
 		config:             BarTypes[BarType],
 		width:              BarWidth,
 		pending:            Pending,

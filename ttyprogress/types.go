@@ -1,16 +1,24 @@
 package ttyprogress
 
 import (
-	"github.com/mandelsoft/jobscheduler/ttyprogress/ppi"
 	"github.com/mandelsoft/jobscheduler/ttyprogress/specs"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/types"
 )
 
 // DecoratorFunc is a function that can be prepended and appended to the progress bar
-type DecoratorFunc = specs.DecoratorFunc
+type DecoratorFunc = types.DecoratorFunc
 
-type Element = specs.ElementInterface
+type Element = types.Element
 
-type Container = ppi.Container
+type Container = types.Container
+
+type ElementDefinition[T Element] interface {
+	types.ElementDefinition[T]
+}
+
+type ElementSpecification[T Element] interface {
+	specs.ElementSpecification[T]
+}
 
 type Ticker interface {
 	Tick() bool
@@ -18,8 +26,4 @@ type Ticker interface {
 
 type Dupper[T any] interface {
 	Dup() T
-}
-
-type ElementSpecification[T Element] interface {
-	Add(Container) (T, error)
 }

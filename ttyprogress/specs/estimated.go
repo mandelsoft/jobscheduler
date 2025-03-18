@@ -27,7 +27,7 @@ type EstimatedDefinition[T any] struct {
 // for a derived bar definition.
 func NewEstimatedDefinition[T any](self Self[T], total time.Duration) EstimatedDefinition[T] {
 	d := EstimatedDefinition[T]{total: total}
-	d.BarBaseDefinition = NewBarBaseDefinition[T](self)
+	d.BarBaseDefinition = NewBarBaseDefinition(self)
 	return d
 }
 

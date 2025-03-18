@@ -21,7 +21,7 @@ var (
 // for a derived text spinner definition.
 func NewTextSpinnerDefinition[T any](self Self[T]) TextSpinnerDefinition[T] {
 	d := TextSpinnerDefinition[T]{view: 3}
-	d.SpinnerDefinition = NewSpinnerDefinition[T](self)
+	d.SpinnerDefinition = NewSpinnerDefinition(self)
 	return d
 }
 

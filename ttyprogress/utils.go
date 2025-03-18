@@ -27,6 +27,13 @@ func Amount(unit ...units.Unit) func(Element) string {
 	}
 }
 
+func Processed(unit ...units.Unit) func(Element) string {
+	u := general.OptionalDefaulted(units.Plain, unit...)
+	return func(e Element) string {
+		return fmt.Sprintf("(%s)", u(e.(interface{ Current() int }).Current()))
+	}
+}
+
 // PercentTerminalSize return a width relative to to the terminal size.
 func PercentTerminalSize(p uint) uint {
 	x, _ := uiblocks.GetTerminalSize()
@@ -58,7 +65,7 @@ func ReserveTerminalSize(r uint) uint {
 
 // SimpleProgress creates and displays a single progress element according
 // to the given specification.
-func SimpleProgress[T Element](w io.Writer, e ElementSpecification[T]) T {
+func SimpleProgress[T Element](w io.Writer, e ElementDefinition[T]) T {
 	p := New(w)
 	b, _ := e.Add(p)
 	p.Close()

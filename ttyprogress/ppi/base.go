@@ -1,16 +1,8 @@
 package ppi
 
 import (
-	"context"
-
-	"github.com/mandelsoft/jobscheduler/ttyprogress/specs"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/types"
 )
 
-type Container interface {
-	AddBlock(b *uiblocks.UIBlock) error
-
-	Wait(ctx context.Context) error
-}
-
-type DecoratorFunc = specs.DecoratorFunc
+type Container = types.Container
+type DecoratorFunc = types.DecoratorFunc

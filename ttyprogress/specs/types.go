@@ -1,4 +1,9 @@
 package specs
 
-// DecoratorFunc is a function that can be prepended and appended to the progress bar
-type DecoratorFunc func(b ElementInterface) string
+import (
+	"github.com/mandelsoft/jobscheduler/ttyprogress/types"
+)
+
+type DecoratorFunc = types.DecoratorFunc
+
+type Container = types.Container

@@ -14,13 +14,16 @@ type BarDefinition[T any] struct {
 	total int
 }
 
-var _ BarSpecification[any] = (*BarDefinition[any])(nil)
+var (
+	_ BarSpecification[any] = (*BarDefinition[any])(nil)
+	_ BarConfiguration[int] = (*BarDefinition[any])(nil)
+)
 
 // NewBarDefinition can be used to create a nested definition
 // for a derived bar definition.
 func NewBarDefinition[T any](s Self[T]) BarDefinition[T] {
 	return BarDefinition[T]{
-		BarBaseDefinition: NewBarBaseDefinition[T](s),
+		BarBaseDefinition: NewBarBaseDefinition(s),
 		total:             100,
 	}
 }
@@ -48,7 +51,7 @@ type BarSpecification[T any] interface {
 	SetTotal(v int) T
 }
 
-type BarConfiguration interface {
+type BarConfiguration[T any] interface {
 	BarBaseConfiguration
 	GetTotal() int
 }

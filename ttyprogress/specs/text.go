@@ -30,7 +30,7 @@ var (
 // for a derived text definition.
 func NewTextDefinition[T any](self Self[T]) TextDefinition[T] {
 	d := TextDefinition[T]{view: TextView}
-	d.ElementDefinition = NewElementDefinition[T](self)
+	d.ElementDefinition = NewElementDefinition(self)
 	return d
 }
 

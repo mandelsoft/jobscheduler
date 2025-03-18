@@ -21,7 +21,7 @@ type ElementProtected[I any] interface {
 }
 
 func ElementSelf[I ElementInterface, P ElementProtected[I]](p P) Self[I, P] {
-	return Self[I, P]{p}
+	return NewSelf[I, P](p)
 }
 
 type (
@@ -56,14 +56,18 @@ func NewElemBase[I ElementInterface, P ElementProtected[I]](self Self[I, P], p C
 	if c.GetFinal() != "" {
 		b.SetFinal(c.GetFinal())
 	}
+	pgap := ""
+	if g, ok := p.(Gapped); ok {
+		pgap = g.Gap()
+	}
 	if t, ok := c.(TitleLineProvider); ok && t.GetTitleLine() != "" {
 		b.SetTitleLine(t.GetTitleLine())
 	}
 	if t, ok := c.(GapProvider); ok && t.GetGap() != "" {
-		b.SetGap(t.GetGap())
+		b.SetGap(pgap + t.GetGap())
 	}
 	if t, ok := c.(FollowupGapProvider); ok && t.GetFollowUpGap() != "" {
-		b.SetFollowUpGap(t.GetFollowUpGap())
+		b.SetFollowUpGap(pgap + t.GetFollowUpGap())
 	}
 
 	if err := p.AddBlock(b); err != nil {

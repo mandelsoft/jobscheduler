@@ -14,18 +14,23 @@ type Protected[I any] interface {
 // on the public object interface.
 // I is the public effective object interface
 // and P the protected implementation wrapper.
-type Self[I any, P Protected[I]] struct {
+type Self[I any, P Protected[I]] interface {
+	Self() I
+	Protected() P
+}
+
+type self[I any, P Protected[I]] struct {
 	protected P
 }
 
-func (s Self[I, P]) Self() I {
+func (s *self[I, P]) Self() I {
 	return s.protected.Self()
 }
 
-func (s Self[I, P]) Protected() P {
+func (s *self[I, P]) Protected() P {
 	return s.protected
 }
 
 func NewSelf[I any, P Protected[I]](p P) Self[I, P] {
-	return Self[I, P]{p}
+	return &self[I, P]{p}
 }

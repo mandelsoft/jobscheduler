@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/mandelsoft/goutils/atomic"
@@ -47,6 +48,8 @@ type UIBlock struct {
 	done   chan struct{}
 
 	final []byte
+
+	closer []func()
 }
 
 type block = UIBlock
@@ -82,6 +85,11 @@ func (w *UIBlock) rlock() func() {
 
 func (w *UIBlock) UIBlocks() *UIBlocks {
 	return w.blocks.Load()
+}
+
+func (w *UIBlock) RegisterCloser(f func()) {
+	defer w.lock()()
+	w.closer = append(w.closer, f)
 }
 
 func (w *UIBlock) SetTitleLine(s string) *UIBlock {
@@ -214,6 +222,10 @@ func (w *UIBlock) Close() error {
 	}
 	w.closed = true
 	close(w.done)
+	for _, c := range w.closer {
+		go c()
+		runtime.Gosched()
+	}
 	if b != nil {
 		return b.discardBlock()
 	}

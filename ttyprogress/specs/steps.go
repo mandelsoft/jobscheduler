@@ -2,6 +2,7 @@ package specs
 
 import (
 	"slices"
+	"time"
 )
 
 type StepsInterface interface {
@@ -19,7 +20,7 @@ type StepsDefinition[T any] struct {
 // for a derived steps definition.
 func NewStepsDefinition[T any](self Self[T], steps []string) StepsDefinition[T] {
 	d := StepsDefinition[T]{steps: slices.Clone(steps)}
-	d.BarBaseDefinition = NewBarBaseDefinition[T](self)
+	d.BarBaseDefinition = NewBarBaseDefinition(self)
 	return d
 
 }
@@ -67,6 +68,6 @@ type StepsSpecification[T any] interface {
 }
 
 type StepsConfiguration interface {
-	BarConfiguration
+	BarConfiguration[time.Duration]
 	GetSteps() []string
 }

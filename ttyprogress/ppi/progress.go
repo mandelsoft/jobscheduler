@@ -23,7 +23,7 @@ type ProgressProtected[I any] interface {
 }
 
 func ProgressSelf[I ProgressInterface](impl ProgressProtected[I]) Self[I, ProgressProtected[I]] {
-	return Self[I, ProgressProtected[I]]{impl}
+	return NewSelf[I, ProgressProtected[I]](impl)
 }
 
 // ProgressBase is a base implementation for elements providing
@@ -42,13 +42,13 @@ func NewProgressBase[T ProgressInterface](self Self[T, ProgressProtected[T]], p 
 	e.color = c.GetColor()
 	e.prependFuncs = slices.Clone(c.GetPrependFuncs())
 	e.appendFuncs = slices.Clone(c.GetAppendFuncs())
-	e.tick = general.OptionalDefaulted(c.GetTick(), tick...)
 
 	b, err := NewElemBase[T, ProgressProtected[T]](self, p, c, view, closer)
 	if err != nil {
 		return nil, err
 	}
 	e.ElemBase = *b
+	e.tick = general.OptionalDefaulted(c.GetTick(), tick...)
 	return e, nil
 }
 

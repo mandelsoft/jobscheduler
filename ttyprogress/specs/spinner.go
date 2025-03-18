@@ -18,19 +18,18 @@ type SpinnerDefinition[T any] struct {
 }
 
 var (
-	_ SpinnerSpecification[any] = (*SpinnerDefinition[any])(nil)
-	_ SpinnerConfiguration      = (*SpinnerDefinition[any])(nil)
+	_ SpinnerSpecification[ProgressInterface] = (*SpinnerDefinition[ProgressInterface])(nil)
+	_ SpinnerConfiguration                    = (*SpinnerDefinition[ProgressInterface])(nil)
 )
 
 // NewSpinnerDef can be used to create a nested definition
 // for a derived spinner definition.
 func NewSpinnerDefinition[T any](self Self[T]) SpinnerDefinition[T] {
 	d := SpinnerDefinition[T]{
-		ProgressDefinition: NewProgressDefinition[T](self),
+		ProgressDefinition: NewProgressDefinition(self),
 		speed:              SpinnerSpeed,
 		done:               Done,
 	}
-	d.ProgressDefinition = NewProgressDefinition[T](self)
 	d.SetPredefined(SpinnerType)
 	return d
 

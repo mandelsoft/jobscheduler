@@ -33,6 +33,8 @@ type BarDefinition struct {
 	specs.BarDefinition[*BarDefinition]
 }
 
+var _ specs.GroupProgressElementDefinition[Bar] = (*BarDefinition)(nil)
+
 func NewBar() *BarDefinition {
 	d := &BarDefinition{}
 	d.BarDefinition = specs.NewBarDefinition(specs.NewSelf(d))
@@ -45,12 +47,37 @@ func (d *BarDefinition) Dup() *BarDefinition {
 	return dup
 }
 
+func (d *BarDefinition) GetGroupNotifier() specs.GroupNotifier[Bar] {
+	return &barGroupNotifier{}
+}
+
 func (d *BarDefinition) Add(c Container) (Bar, error) {
 	return newBar(c, d)
 }
 
 func (d *BarDefinition) AddWithTotal(c Container, total int) (Bar, error) {
 	return newBar(c, d, total)
+}
+
+type barGroupNotifier struct {
+	started bool
+}
+
+var _ specs.GroupNotifier[Bar] = (*barGroupNotifier)(nil)
+
+func (n *barGroupNotifier) Add(b Bar) {
+	eff := b.(*_Bar[Bar])
+	eff.Lock.Lock()
+	defer eff.Lock.Unlock()
+	if !n.started {
+		eff.total = 0
+		n.started = true
+	}
+	eff.total++
+}
+
+func (*barGroupNotifier) Done(b Bar) {
+	b.Incr()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +130,7 @@ func (b *_barProtected) Visualize() (string, bool) {
 }
 
 // newBar returns a new progress bar
-func newBar(p Container, c specs.BarConfiguration, total ...int) (Bar, error) {
+func newBar(p Container, c specs.BarConfiguration[int], total ...int) (Bar, error) {
 	return newBarBase[Bar](p, c, general.OptionalDefaulted(c.GetTotal(), total...), func(e *_Bar[Bar]) ppi.Self[Bar, ppi.ProgressProtected[Bar]] {
 		return ppi.ProgressSelf[Bar](&_barProtected{e})
 	})

@@ -35,7 +35,7 @@ func Scaled(v int, factor int, units []string, scale ...int64) string {
 	}
 }
 
-var byteUnits = []string{"", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
+var byteUnits = []string{"", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "RB", "QB"}
 
 func Bytes(scale ...int64) Unit {
 	return func(n int) string {
@@ -48,6 +48,14 @@ var lengthUnits = []string{"mm", "m", "km"}
 func Millimeter(scale ...int64) Unit {
 	return func(n int) string {
 		return Scaled(n, 1000, lengthUnits, scale...)
+	}
+}
+
+var amountUnits = []string{"", "k", "m", "g", "t", "p", "e", "z", "y", "r", "q"}
+
+func Amount(scale ...int64) Unit {
+	return func(n int) string {
+		return Scaled(n, 1000, amountUnits, scale...)
 	}
 }
 

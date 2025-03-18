@@ -68,7 +68,7 @@ func Visualize[T ppi.ProgressInterface](s *RawSpinner[T]) (string, bool) {
 }
 
 func (s *RawSpinner[T]) Tick() bool {
-	if s.self.Self().IsClosed() {
+	if s.self == nil || s.self.Self().IsClosed() {
 		return false
 	}
 	s.lock.Lock()
