@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 )
 
 type Gapped interface {
@@ -23,7 +23,7 @@ type GroupBase[I any, T ProgressInterface[T]] struct {
 	followup string
 
 	main   T
-	blocks []*uiblocks.UIBlock
+	blocks []*blocks.Block
 	closed bool
 }
 
@@ -51,7 +51,7 @@ func (g *GroupBase[I, T]) SetFollowUpGap(gap string) I {
 	return g.self
 }
 
-func (g *GroupBase[I, T]) NewBlock(view ...int) *uiblocks.UIBlock {
+func (g *GroupBase[I, T]) NewBlock(view ...int) *blocks.Block {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -59,7 +59,7 @@ func (g *GroupBase[I, T]) NewBlock(view ...int) *uiblocks.UIBlock {
 		return nil
 	}
 
-	var b *uiblocks.UIBlock
+	var b *blocks.Block
 	if len(g.blocks) == 0 {
 		b = g.parent.NewBlock(view...)
 		b.SetGap(g.pgap)

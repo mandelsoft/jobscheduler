@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 )
 
 func main() {
-	blocks := uiblocks.New(os.Stdout)
+	blocks := blocks.New(os.Stdout)
 
 	writer := blocks.NewBlock(3).SetAuto().SetGap("-> ").SetTitleLine("Some work:")
 

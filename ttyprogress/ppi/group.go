@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 	"github.com/mandelsoft/jobscheduler/ttyprogress/specs"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
 )
 
 type Gapped interface {
@@ -24,7 +24,7 @@ type GroupBase[I any, T ProgressInterface] struct {
 
 	main     T
 	notifier specs.GroupNotifier[T]
-	blocks   []*uiblocks.UIBlock
+	blocks   []*blocks.Block
 	closed   bool
 }
 
@@ -48,7 +48,7 @@ func NewGroupBase[I any, T ProgressInterface](p Container, self I, c specs.Group
 	}
 }
 
-func (g *GroupBase[I, T]) AddBlock(b *uiblocks.UIBlock) error {
+func (g *GroupBase[I, T]) AddBlock(b *blocks.Block) error {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -70,8 +70,8 @@ func (g *GroupBase[I, T]) AddBlock(b *uiblocks.UIBlock) error {
 		}
 		b.SetGap(g.pgap + g.gap) // .SetFollowUpGap(g.pgap + g.followup)
 		g.blocks[0].UIBlocks().AppendBlock(b, n)
-		b.RegisterCloser(func() { g.notifier.Done(g.main) })
-		g.notifier.Add(g.main)
+		b.RegisterCloser(func() { g.notifier.Done(g.main, b) })
+		g.notifier.Add(g.main, (b))
 	}
 	if b != nil {
 		g.blocks = append(g.blocks, b)

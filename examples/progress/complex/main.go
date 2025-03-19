@@ -6,23 +6,28 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiprogress"
+	"github.com/mandelsoft/jobscheduler/ttyprogress"
 )
 
-func grouped(p uiprogress.Container, lvl int) {
-	g := uiprogress.NewGroup(p, "- ", 86).
-		SetFollowUpGap("  ").
+func grouped(p ttyprogress.Container, lvl int) {
+	s := ttyprogress.NewSpinner().SetPredefined(86).
 		SetSpeed(5).
-		PrependFunc(uiprogress.Message(fmt.Sprintf("Grouped work %d", lvl))).
+		PrependFunc(ttyprogress.Message(fmt.Sprintf("Grouped work %d", lvl))).
 		AppendElapsed()
+
+	g, _ := ttyprogress.NewGroup[ttyprogress.Spinner](s).
+		SetGap("- ").
+		SetFollowUpGap("  ").
+		Add(p)
 	if lvl > 0 {
 		grouped(g, lvl-1)
 	}
 	for i := 0; i < 2; i++ {
-		bar := uiprogress.NewSpinner(g, 70).
+		bar, _ := ttyprogress.NewSpinner().SetPredefined(70).
 			SetSpeed(1).
-			PrependFunc(uiprogress.Message(fmt.Sprintf("working on task %d[%d]...", i+1, lvl))).
-			AppendElapsed()
+			PrependFunc(ttyprogress.Message(fmt.Sprintf("working on task %d[%d]...", i+1, lvl))).
+			AppendElapsed().
+			Add(g)
 		bar.Start()
 		go func() {
 			time.Sleep(time.Second * time.Duration(10+rand.Int()%20))
@@ -30,11 +35,14 @@ func grouped(p uiprogress.Container, lvl int) {
 		}()
 	}
 
-	text := uiprogress.NewTextSpinner(g, 70, 3).
+	text, _ := ttyprogress.NewTextSpinner().
+		SetPredefined(70).
+		SetView(3).
 		SetSpeed(1).
-		SetGap("  ").
-		PrependFunc(uiprogress.Message(fmt.Sprintf("working on task %d[%d]...", 3, lvl))).
-		AppendElapsed()
+		SetFollowUpGap("  ").
+		PrependFunc(ttyprogress.Message(fmt.Sprintf("working on task %d[%d]...", 3, lvl))).
+		AppendElapsed().
+		Add(g)
 
 	go func() {
 		for i := 0; i <= 20; i++ {
@@ -47,7 +55,7 @@ func grouped(p uiprogress.Container, lvl int) {
 }
 
 func main() {
-	p := uiprogress.New(os.Stdout)
+	p := ttyprogress.New(os.Stdout)
 	grouped(p, 2)
 	p.Close()
 	p.Wait(nil)

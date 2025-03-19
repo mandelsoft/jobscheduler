@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/mandelsoft/goutils/general"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 	"github.com/mandelsoft/jobscheduler/ttyprogress/specs"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
@@ -35,7 +35,7 @@ type ElemBase[I ElementInterface, P ElementProtected[I]] struct {
 
 	self Self[I, P]
 
-	block  *uiblocks.UIBlock
+	block  *blocks.Block
 	closer func()
 
 	// timeStarted is time progress began.
@@ -49,7 +49,7 @@ func NewElemBase[I ElementInterface, P ElementProtected[I]](self Self[I, P], p C
 	if view <= 0 {
 		view = 1
 	}
-	b := uiblocks.NewBlock(view)
+	b := blocks.NewBlock(view)
 	e := &ElemBase[I, P]{self: self, block: b, closer: general.Optional(closer...)}
 
 	b.SetPayload(self.Self())
@@ -81,7 +81,7 @@ func (b *ElemBase[I, P]) SetFinal(m string) I {
 	return b.self.Self()
 }
 
-func (b *ElemBase[I, P]) UIBlock() *uiblocks.UIBlock {
+func (b *ElemBase[I, P]) UIBlock() *blocks.Block {
 	return b.block
 }
 

@@ -11,12 +11,12 @@ import (
 	"github.com/fatih/color"
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/stringutils"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
 type Container interface {
-	NewBlock(view ...int) *uiblocks.UIBlock
+	NewBlock(view ...int) *blocks.Block
 	Wait(ctx context.Context) error
 }
 
@@ -34,7 +34,7 @@ type ElemBase[I BaseInterface, P BaseProtected[I]] struct {
 
 	self Self[I, P]
 
-	block  *uiblocks.UIBlock
+	block  *blocks.Block
 	closer func()
 
 	// timeStarted is time progress began.
@@ -56,7 +56,7 @@ func (b *ElemBase[I, P]) SetFinal(m string) I {
 	return b.self.Self()
 }
 
-func (b *ElemBase[I, P]) UIBlock() *uiblocks.UIBlock {
+func (b *ElemBase[I, P]) UIBlock() *blocks.Block {
 	return b.block
 }
 

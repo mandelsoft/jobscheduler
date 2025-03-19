@@ -1,8 +1,7 @@
-package uiblocks_test
+package blocks_test
 
 import (
 	"github.com/fatih/color"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -14,6 +13,6 @@ var _ = Describe("Color Test Environment", func() {
 	It("", func() {
 		s := c.Sprintf("test")
 
-		Expect(uiblocks.ColorLength([]byte(s))).To(Equal(7))
+		Expect(ColorLength([]byte(s))).To(Equal(7))
 	})
 })

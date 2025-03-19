@@ -12,11 +12,11 @@ func Plain(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func Scaled(v int, factor int, units []string, scale ...int64) string {
+func Scaled(v int, factor int64, units []string, scale ...int64) string {
 	var s int64
 	n := int64(v) * general.OptionalDefaulted[int64](int64(1), scale...)
 	for _, u := range units {
-		n, s = n/int64(factor), n
+		n, s = n/factor, n
 		if n == 0 {
 			if u == "" {
 				return fmt.Sprintf("%d", s)
@@ -36,6 +36,13 @@ func Scaled(v int, factor int, units []string, scale ...int64) string {
 }
 
 var byteUnits = []string{"", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "RB", "QB"}
+
+const KB = 1024
+const MB = 1024 * KB
+const GB = 1024 * MB
+const TB = 1024 * GB
+const PB = 1024 * TB
+const EB = 1024 * PB
 
 func Bytes(scale ...int64) Unit {
 	return func(n int) string {

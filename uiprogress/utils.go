@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mandelsoft/goutils/general"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
@@ -28,7 +28,7 @@ func Amount(unit ...units.Unit) func(Element) string {
 
 // PercentTerminalSize return a width relative to to the terminal size.
 func PercentTerminalSize(p uint) uint {
-	x, _ := uiblocks.GetTerminalSize()
+	x, _ := blocks.GetTerminalSize()
 
 	fmt.Printf("width %d\n", x)
 	if x == 0 {
@@ -45,7 +45,7 @@ func PercentTerminalSize(p uint) uint {
 // reserving an amount of characters for predefined fixed
 // content.
 func ReserveTerminalSize(r uint) uint {
-	x, _ := uiblocks.GetTerminalSize()
+	x, _ := blocks.GetTerminalSize()
 	if x == 0 {
 		return 10
 	}

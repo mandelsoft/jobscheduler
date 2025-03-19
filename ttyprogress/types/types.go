@@ -5,14 +5,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 )
 
 // DecoratorFunc is a function that can be prepended and appended to the progress bar
 type DecoratorFunc func(b Element) string
 
 type Container interface {
-	AddBlock(b *uiblocks.UIBlock) error
+	AddBlock(b *blocks.Block) error
 	Wait(ctx context.Context) error
 }
 

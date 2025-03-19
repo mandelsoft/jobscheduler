@@ -1,4 +1,4 @@
-package uiblocks
+package blocks
 
 import (
 	"github.com/fatih/color"

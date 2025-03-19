@@ -1,4 +1,4 @@
-package uiblocks_test
+package blocks_test
 
 import (
 	"testing"

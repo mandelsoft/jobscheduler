@@ -38,7 +38,7 @@ func (d *SpinnerDefinition) Add(c Container) (Spinner, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type _Spinner struct {
-	RawSpinner[Spinner]
+	ppi.SpinnerBase[Spinner]
 	closed bool
 }
 
@@ -63,11 +63,11 @@ func (s *_spinnerProtected) Visualize() (string, bool) {
 func newSpinner(p Container, c specs.SpinnerConfiguration) (Spinner, error) {
 	e := &_Spinner{}
 	self := ppi.ProgressSelf[Spinner](&_spinnerProtected{e})
-	b, err := NewRawSpinner[Spinner](self, p, c, 1, nil)
+	b, err := ppi.NewSpinnerBase[Spinner](self, p, c, 1, nil)
 	if err != nil {
 		return nil, err
 	}
-	e.RawSpinner = *b
+	e.SpinnerBase = *b
 	return e, nil
 }
 
@@ -80,8 +80,8 @@ func (s *_Spinner) _update() bool {
 }
 
 func (s *_Spinner) _visualize() (string, bool) {
-	if s.self.Self().IsClosed() {
+	if s.IsClosed() {
 		return "done", true
 	}
-	return Visualize(&s.RawSpinner)
+	return ppi.Visualize(&s.SpinnerBase)
 }

@@ -1,4 +1,4 @@
-package uiblocks
+package blocks
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"github.com/mandelsoft/goutils/general"
 )
 
-// UIBlocks is a sequences of UIBlock/s which represent a trailing range of
+// Blocks is a sequences of Block/s which represent a trailing range of
 // lines on a terminal output given by am output steam. The stream is written to
 // update the covered terminal lines with the actual context of the included
-// UIBlock/s.
-// The contents of the UIBlock/s will be flushed on a timed interval or when
+// Block/s.
+// The contents of the Block/s will be flushed on a timed interval or when
 // Flush is called.
-type UIBlocks struct {
+type Blocks struct {
 	lock sync.RWMutex
 
 	// out is the writer to write to
@@ -26,7 +26,7 @@ type UIBlocks struct {
 
 	overFlowHandled bool
 
-	blocks    []*UIBlock
+	blocks    []*Block
 	lineCount int
 
 	closed bool
@@ -36,9 +36,9 @@ type UIBlocks struct {
 	pending bool
 }
 
-// New returns a new UIBlocks with defaults
-func New(opt ...io.Writer) *UIBlocks {
-	w := &UIBlocks{
+// New returns a new Blocks with defaults
+func New(opt ...io.Writer) *Blocks {
+	w := &Blocks{
 		out:   general.OptionalDefaulted[io.Writer](os.Stdout, opt...),
 		done:  make(chan struct{}),
 		timer: time.NewTimer(0),
@@ -53,7 +53,7 @@ func New(opt ...io.Writer) *UIBlocks {
 	return w
 }
 
-func (w *UIBlocks) requestFlush() {
+func (w *Blocks) requestFlush() {
 	if w.pending {
 		return
 	}
@@ -61,11 +61,11 @@ func (w *UIBlocks) requestFlush() {
 	w.timer.Reset(time.Millisecond * 250)
 }
 
-func (w *UIBlocks) Done() <-chan struct{} {
+func (w *Blocks) Done() <-chan struct{} {
 	return w.done
 }
 
-func (w *UIBlocks) listen() {
+func (w *Blocks) listen() {
 	for {
 		select {
 		case <-w.done:
@@ -76,24 +76,24 @@ func (w *UIBlocks) listen() {
 	}
 }
 
-// NewBlock returns a new UIBlock assigned to this UIBlocks.
-func (w *UIBlocks) NewBlock(view ...int) *UIBlock {
+// NewBlock returns a new Block assigned to this Blocks.
+func (w *Blocks) NewBlock(view ...int) *Block {
 	return w.createBlock(nil, 0, view...)
 }
 
-// NewAppendedBlock creates a new assigned UIBlock added after the
+// NewAppendedBlock creates a new assigned Block added after the
 // given parent block.
-func (w *UIBlocks) NewAppendedBlock(p *UIBlock, view ...int) *UIBlock {
+func (w *Blocks) NewAppendedBlock(p *Block, view ...int) *Block {
 	return w.createBlock(p, 1, view...)
 }
 
-// NewInsertedBlock creates a new assigned UIBlock added before the
+// NewInsertedBlock creates a new assigned Block added before the
 // given parent block.
-func (w *UIBlocks) NewInsertedBlock(p *UIBlock, view ...int) *UIBlock {
+func (w *Blocks) NewInsertedBlock(p *Block, view ...int) *Block {
 	return w.createBlock(p, 0, view...)
 }
 
-func (w *UIBlocks) createBlock(p *UIBlock, offset int, view ...int) *UIBlock {
+func (w *Blocks) createBlock(p *Block, offset int, view ...int) *Block {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -105,23 +105,23 @@ func (w *UIBlocks) createBlock(p *UIBlock, offset int, view ...int) *UIBlock {
 	return b
 }
 
-// AppendBlock adds an assigned UIBlock after the
+// AppendBlock adds an assigned Block after the
 // given parent block.
-func (w *UIBlocks) AppendBlock(b *UIBlock, p *UIBlock) error {
+func (w *Blocks) AppendBlock(b *Block, p *Block) error {
 	return w.addBlock(b, p, 1)
 }
 
-// InsertBlock adds an unassigned UIBlock before the
+// InsertBlock adds an unassigned Block before the
 // given parent block.
-func (w *UIBlocks) InsertBlock(b *UIBlock, p *UIBlock, view ...int) error {
+func (w *Blocks) InsertBlock(b *Block, p *Block, view ...int) error {
 	return w.addBlock(b, p, 0)
 }
 
-func (w *UIBlocks) AddBlock(b *UIBlock) error {
+func (w *Blocks) AddBlock(b *Block) error {
 	return w.addBlock(b, nil, 0)
 }
 
-func (w *UIBlocks) addBlock(b *UIBlock, p *UIBlock, offset int) error {
+func (w *Blocks) addBlock(b *Block, p *Block, offset int) error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -131,7 +131,7 @@ func (w *UIBlocks) addBlock(b *UIBlock, p *UIBlock, offset int) error {
 	return w._addBlock(b, p, offset)
 }
 
-func (w *UIBlocks) _addBlock(b *UIBlock, p *UIBlock, offset int) error {
+func (w *Blocks) _addBlock(b *Block, p *Block, offset int) error {
 	if !b.blocks.CompareAndSwap(nil, w) {
 		return ErrAlreadyAssigned
 	}
@@ -139,7 +139,7 @@ func (w *UIBlocks) _addBlock(b *UIBlock, p *UIBlock, offset int) error {
 	if p != nil {
 		for i := range w.blocks {
 			if w.blocks[i] == p {
-				w.blocks = append(w.blocks[:i+offset], append([]*UIBlock{b}, w.blocks[i+offset:]...)...)
+				w.blocks = append(w.blocks[:i+offset], append([]*Block{b}, w.blocks[i+offset:]...)...)
 				return nil
 			}
 		}
@@ -148,13 +148,13 @@ func (w *UIBlocks) _addBlock(b *UIBlock, p *UIBlock, offset int) error {
 	return nil
 }
 
-func (w *UIBlocks) Blocks() []*UIBlock {
+func (w *Blocks) Blocks() []*Block {
 	w.lock.RLock()
 	defer w.lock.RUnlock()
 	return slices.Clone(w.blocks)
 }
 
-func (w *UIBlocks) TermWidth() int {
+func (w *Blocks) TermWidth() int {
 	w.lock.RLock()
 	defer w.lock.RUnlock()
 
@@ -162,10 +162,10 @@ func (w *UIBlocks) TermWidth() int {
 }
 
 // Close closed the line range.
-// No UIBlocks can be added anymore, and the
-// UIBlocls object is done, when all included UIBlock/s
+// No Blocks can be added anymore, and the
+// UIBlocls object is done, when all included Block/s
 // are closed.
-func (w *UIBlocks) Close() error {
+func (w *Blocks) Close() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -177,10 +177,10 @@ func (w *UIBlocks) Close() error {
 }
 
 // Wait waits until the object and all included
-// UIBlock/s are closed.
+// Block/s are closed.
 // If a context.Context is given it returns
 // if the context is done, also.
-func (w *UIBlocks) Wait(ctx context.Context) error {
+func (w *Blocks) Wait(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -192,7 +192,7 @@ func (w *UIBlocks) Wait(ctx context.Context) error {
 	}
 }
 
-func (w *UIBlocks) discardBlock() error {
+func (w *Blocks) discardBlock() error {
 	discarded := false
 	for len(w.blocks) > 0 && w.blocks[0].closed {
 		if !discarded {
@@ -212,7 +212,7 @@ func (w *UIBlocks) discardBlock() error {
 	return nil
 }
 
-func (w *UIBlocks) Flush() error {
+func (w *Blocks) Flush() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -222,7 +222,7 @@ func (w *UIBlocks) Flush() error {
 	return w.flush()
 }
 
-func (w *UIBlocks) flush() error {
+func (w *Blocks) flush() error {
 	lines := 0
 	for _, b := range w.blocks {
 		l, err := b.emit(false)

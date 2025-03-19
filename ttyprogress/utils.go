@@ -5,7 +5,8 @@ import (
 	"io"
 
 	"github.com/mandelsoft/goutils/general"
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/types"
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
@@ -36,7 +37,7 @@ func Processed(unit ...units.Unit) func(Element) string {
 
 // PercentTerminalSize return a width relative to to the terminal size.
 func PercentTerminalSize(p uint) uint {
-	x, _ := uiblocks.GetTerminalSize()
+	x, _ := blocks.GetTerminalSize()
 
 	if x == 0 {
 		return 10
@@ -52,7 +53,7 @@ func PercentTerminalSize(p uint) uint {
 // reserving an amount of characters for predefined fixed
 // content.
 func ReserveTerminalSize(r uint) uint {
-	x, _ := uiblocks.GetTerminalSize()
+	x, _ := blocks.GetTerminalSize()
 	if x == 0 {
 		return 10
 	}
@@ -70,4 +71,8 @@ func SimpleProgress[T Element](w io.Writer, e ElementDefinition[T]) T {
 	b, _ := e.Add(p)
 	p.Close()
 	return b
+}
+
+func AddElement[T Element](p Container, definition types.ElementDefinition[T]) (T, error) {
+	return definition.Add(p)
 }

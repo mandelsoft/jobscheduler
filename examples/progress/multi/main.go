@@ -6,21 +6,22 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiprogress"
+	"github.com/mandelsoft/jobscheduler/ttyprogress"
 	"github.com/mandelsoft/jobscheduler/units"
 )
 
 func main() {
-	p := uiprogress.New(os.Stdout)
+	p := ttyprogress.New(os.Stdout)
 
 	for b := 0; b < 3; b++ {
 		total := 100 + rand.Int()%100
-		w := uiprogress.NewBar(p, total).
+		w, _ := ttyprogress.NewBar().
+			SetTotal(total).
 			SetPredefined(1).
 			SetFinal(fmt.Sprintf("Finished: Downloaded %d GB", total)).
-			AppendFunc(uiprogress.Amount(units.Plain)).
-			AppendFunc(uiprogress.Message("GB")).
-			PrependFunc(uiprogress.Message("Downloading ..."))
+			AppendFunc(ttyprogress.Amount(units.Bytes(units.GB))).
+			PrependFunc(ttyprogress.Message("Downloading ...")).
+			Add(p)
 
 		go func() {
 			done := 0

@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package uiblocks
+package blocks
 
 import (
 	"os"

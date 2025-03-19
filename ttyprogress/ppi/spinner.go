@@ -1,23 +1,22 @@
-package ttyprogress
+package ppi
 
 import (
 	"sync"
 
-	"github.com/mandelsoft/jobscheduler/ttyprogress/ppi"
 	"github.com/mandelsoft/jobscheduler/ttyprogress/specs"
 )
 
 var SpinnerTypes = specs.SpinnerTypes
 
-type RawSpinnerInterface interface {
-	ppi.ProgressInterface
+type SpinnerBaseInterface interface {
+	ProgressInterface
 }
 
-type RawSpinner[P ppi.ProgressInterface] struct {
-	ppi.ProgressBase[P]
+type SpinnerBase[P ProgressInterface] struct {
+	ProgressBase[P]
 
 	lock sync.Mutex
-	self ppi.Self[P, ppi.ProgressProtected[P]]
+	self Self[P, ProgressProtected[P]]
 
 	// pending is the message shown before started
 	pending string
@@ -32,10 +31,10 @@ type RawSpinner[P ppi.ProgressInterface] struct {
 	phase int
 }
 
-var _ RawSpinnerInterface = (*RawSpinner[ppi.ProgressInterface])(nil)
+var _ SpinnerBaseInterface = (*SpinnerBase[ProgressInterface])(nil)
 
-func NewRawSpinner[T ppi.ProgressInterface](self ppi.Self[T, ppi.ProgressProtected[T]], p Container, c specs.SpinnerConfiguration, view int, closer func()) (*RawSpinner[T], error) {
-	e := &RawSpinner[T]{
+func NewSpinnerBase[T ProgressInterface](self Self[T, ProgressProtected[T]], p Container, c specs.SpinnerConfiguration, view int, closer func()) (*SpinnerBase[T], error) {
+	e := &SpinnerBase[T]{
 		self:    self,
 		phases:  c.GetPhases(),
 		cnt:     c.GetSpeed() - 1,
@@ -43,7 +42,7 @@ func NewRawSpinner[T ppi.ProgressInterface](self ppi.Self[T, ppi.ProgressProtect
 		done:    c.GetDone(),
 		pending: c.GetPending(),
 	}
-	b, err := ppi.NewProgressBase[T](self, p, c, view, closer, true)
+	b, err := NewProgressBase[T](self, p, c, view, closer, true)
 	if err != nil {
 		return nil, err
 	}
@@ -51,13 +50,13 @@ func NewRawSpinner[T ppi.ProgressInterface](self ppi.Self[T, ppi.ProgressProtect
 	return e, nil
 }
 
-func (s *RawSpinner[T]) SetSpeed(v int) T {
+func (s *SpinnerBase[T]) SetSpeed(v int) T {
 	s.speed = v
 	s.cnt = v - 1
 	return s.self.Self()
 }
 
-func Visualize[T ppi.ProgressInterface](s *RawSpinner[T]) (string, bool) {
+func Visualize[T ProgressInterface](s *SpinnerBase[T]) (string, bool) {
 	if s.self.Self().IsClosed() {
 		return s.done, true
 	}
@@ -67,7 +66,7 @@ func Visualize[T ppi.ProgressInterface](s *RawSpinner[T]) (string, bool) {
 	return s.phases[s.phase], false
 }
 
-func (s *RawSpinner[T]) Tick() bool {
+func (s *SpinnerBase[T]) Tick() bool {
 	if s.self == nil || s.self.Self().IsClosed() {
 		return false
 	}

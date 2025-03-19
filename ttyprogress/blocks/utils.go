@@ -1,4 +1,4 @@
-package uiblocks
+package blocks
 
 func GetTerminalSize() (int, int) {
 	return getTermSize()

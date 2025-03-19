@@ -147,3 +147,12 @@ type BarBaseConfiguration interface {
 	GetWidth() uint
 	GetPending() string
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+func TransferBarBaseConfig[D BarBaseSpecification[T], T any](d D, c BarBaseConfiguration) D {
+	d.SetConfig(c.GetConfig())
+	d.SetWidth(c.GetWidth())
+	d.SetPending(c.GetPending())
+	return TransferProgressConfig(d, c)
+}

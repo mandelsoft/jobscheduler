@@ -65,7 +65,7 @@ type barGroupNotifier struct {
 
 var _ specs.GroupNotifier[Bar] = (*barGroupNotifier)(nil)
 
-func (n *barGroupNotifier) Add(b Bar) {
+func (n *barGroupNotifier) Add(b Bar, p any) {
 	eff := b.(*_Bar[Bar])
 	eff.Lock.Lock()
 	defer eff.Lock.Unlock()
@@ -76,7 +76,7 @@ func (n *barGroupNotifier) Add(b Bar) {
 	eff.total++
 }
 
-func (*barGroupNotifier) Done(b Bar) {
+func (*barGroupNotifier) Done(b Bar, p any) {
 	b.Incr()
 }
 

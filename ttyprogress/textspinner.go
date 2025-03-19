@@ -32,7 +32,7 @@ func (d *TextSpinnerDefinition) Add(c Container) (TextSpinner, error) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type _TextSpinner struct {
-	RawSpinner[TextSpinner]
+	ppi.SpinnerBase[TextSpinner]
 	closed bool
 }
 
@@ -58,11 +58,11 @@ func newTextSpinner(p Container, c specs.TextSpinnerConfiguration) (TextSpinner,
 	e := &_TextSpinner{}
 
 	self := ppi.ProgressSelf[TextSpinner](&_textSpinnerProtected{e})
-	b, err := NewRawSpinner[TextSpinner](self, p, c, c.GetView(), nil)
+	b, err := ppi.NewSpinnerBase[TextSpinner](self, p, c, c.GetView(), nil)
 	if err != nil {
 		return nil, err
 	}
-	e.RawSpinner = *b
+	e.SpinnerBase = *b
 	return e, nil
 }
 
@@ -78,5 +78,5 @@ func (s *_TextSpinner) _update() bool {
 }
 
 func (s *_TextSpinner) _visualize() (string, bool) {
-	return Visualize(&s.RawSpinner)
+	return ppi.Visualize(&s.SpinnerBase)
 }

@@ -5,39 +5,41 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiprogress"
+	"github.com/mandelsoft/jobscheduler/ttyprogress"
 )
 
-func Step(n string) uiprogress.NestedStep {
-	return uiprogress.NestedStep{
-		Name: n,
-		Factory: func(p uiprogress.Container, n string) uiprogress.Element {
-			return uiprogress.NewBar(p, 100).
-				PrependFunc(uiprogress.Message(n)).
-				PrependElapsed().
-				AppendCompleted() // .SetFinal("")  // show only current step
-		},
-	}
+func Step(n string) ttyprogress.NestedStep {
+	return ttyprogress.NewNestedStep[ttyprogress.Bar](
+		n, ttyprogress.NewBar().SetTotal(100).
+			PrependElapsed().
+			AppendCompleted())
 }
 
 func main() {
-	p := uiprogress.New(os.Stdout)
+	p := ttyprogress.New(os.Stdout)
 
-	bar := uiprogress.NewNestedSteps(p, "  ", false,
+	bar, _ := ttyprogress.NewNestedSteps(
 		Step("downloading"),
 		Step("unpacking"),
 		Step("installing"),
 		Step("verifying")).
-		PrependFunc(uiprogress.Message("progressbar"), 0).PrependElapsed().AppendCompleted()
+		SetGap("  ").
+		SetWidth(40).
+		ShowStepTitle(false).
+		PrependFunc(ttyprogress.Message("progressbar"), 0).
+		PrependElapsed().
+		AppendCompleted().
+		Add(p)
 
 	go func() {
-		e := bar.Start()
+		bar.Start()
+		e := bar.Current()
 		for i := 0; i < 4; i++ {
 			for i := 0; i < 100; i++ {
 				time.Sleep(time.Millisecond * time.Duration(rand.Int()%100))
-				e.(uiprogress.Bar).Incr()
+				e.(ttyprogress.Bar).Incr()
 			}
-			e = bar.Incr()
+			e, _ = bar.Incr()
 		}
 	}()
 

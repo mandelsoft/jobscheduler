@@ -5,6 +5,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mandelsoft/goutils/stringutils"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/types"
 )
 
 type ProgressInterface interface {
@@ -25,6 +26,8 @@ type ProgressDefinition[T any] struct {
 var (
 	_ ProgressSpecification[any] = (*ProgressDefinition[any])(nil)
 	_ ProgressConfiguration      = (*ProgressDefinition[any])(nil)
+	_ Prepender                  = (*ProgressDefinition[any])(nil)
+	_ Appender                   = (*ProgressDefinition[any])(nil)
 )
 
 func NewProgressDefinition[T any](self Self[T]) ProgressDefinition[T] {
@@ -54,13 +57,18 @@ func (d *ProgressDefinition[T]) GetColor() *color.Color {
 	return d.color
 }
 
-// AppendFunc runs the decorator function and renders the output on the right of the progress bar
-func (d *ProgressDefinition[T]) AppendFunc(f DecoratorFunc, offset ...int) T {
+// AppendFunc2 runs the decorator function and renders the output on the right of the progress bar
+func (d *ProgressDefinition[T]) AppendFunc2(f DecoratorFunc, offset ...int) {
 	if len(offset) == 0 {
 		d.appendFuncs = append(d.appendFuncs, f)
 	} else {
 		d.appendFuncs = slices.Insert(d.appendFuncs, offset[0], f)
 	}
+}
+
+// AppendFunc runs the decorator function and renders the output on the right of the progress bar
+func (d *ProgressDefinition[T]) AppendFunc(f DecoratorFunc, offset ...int) T {
+	d.AppendFunc2(f, offset...)
 	return d.Self()
 }
 
@@ -68,13 +76,18 @@ func (d *ProgressDefinition[T]) GetAppendFuncs() []DecoratorFunc {
 	return slices.Clone(d.appendFuncs)
 }
 
-// PrependFunc runs decorator function and render the output left the progress bar
-func (d *ProgressDefinition[T]) PrependFunc(f DecoratorFunc, offset ...int) T {
+// PrependFunc2 runs decorator function and render the output left the progress bar
+func (d *ProgressDefinition[T]) PrependFunc2(f DecoratorFunc, offset ...int) {
 	if len(offset) == 0 {
 		d.prependFuncs = append(d.prependFuncs, f)
 	} else {
 		d.prependFuncs = slices.Insert(d.prependFuncs, offset[0], f)
 	}
+}
+
+// PrependFunc runs decorator function and render the output left the progress bar
+func (d *ProgressDefinition[T]) PrependFunc(f DecoratorFunc, offset ...int) T {
+	d.PrependFunc2(f, offset...)
 	return d.Self()
 }
 
@@ -136,4 +149,42 @@ type ProgressConfiguration interface {
 	GetColor() *color.Color
 	GetPrependFuncs() []DecoratorFunc
 	GetAppendFuncs() []DecoratorFunc
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func TransferProgressConfig[D ProgressSpecification[T], T any](d D, c ProgressConfiguration) D {
+	for _, e := range c.GetPrependFuncs() {
+		d.PrependFunc(e)
+	}
+	for _, e := range c.GetAppendFuncs() {
+		d.AppendFunc(e)
+	}
+	d.SetColor(c.GetColor())
+	d.SetFinal(c.GetFinal())
+	return d
+}
+
+type Prepender interface {
+	PrependFunc2(f DecoratorFunc, offset ...int)
+}
+
+type Appender interface {
+	AppendFunc2(f DecoratorFunc, offset ...int)
+}
+
+func AppendFunc[T ElementInterface](d types.ElementDefinition[T], f DecoratorFunc, offset ...int) bool {
+	if a, ok := types.Unwrap(d).(Appender); ok {
+		a.AppendFunc2(f, offset...)
+		return true
+	}
+	return false
+}
+
+func PrependFunc[T ElementInterface](d types.ElementDefinition[T], f DecoratorFunc, offset ...int) bool {
+	if a, ok := types.Unwrap(d).(Prepender); ok {
+		a.PrependFunc2(f, offset...)
+		return true
+	}
+	return false
 }

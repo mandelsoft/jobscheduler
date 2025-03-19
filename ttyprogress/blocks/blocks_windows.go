@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package uiblocks
+package blocks
 
 import (
 	"fmt"
@@ -47,7 +47,7 @@ type consoleScreenBufferInfo struct {
 	maximumWindowSize coord
 }
 
-func (w *UIBlocks) clearLines() {
+func (w *Blocks) clearLines() {
 	f, ok := w.out.(FdWriter)
 	if ok && !isatty.IsTerminal(f.Fd()) {
 		ok = false

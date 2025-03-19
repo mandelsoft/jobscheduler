@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 )
 
 func main() {
-	blocks := uiblocks.New(os.Stdout)
+	blocks := blocks.New(os.Stdout)
 
 	for b := 0; b < 3; b++ {
 		total := 100 + rand.Int()%100

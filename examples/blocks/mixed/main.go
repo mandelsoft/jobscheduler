@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/mandelsoft/jobscheduler/uiblocks"
+	"github.com/mandelsoft/jobscheduler/ttyprogress/blocks"
 )
 
-func Download(blocks *uiblocks.UIBlocks) {
+func Download(blocks *blocks.Blocks) {
 	total := 100 + rand.Int()%100
 	w := blocks.NewBlock(1).SetFinal(fmt.Sprintf("Finished: Downloaded %d GB", total))
 
@@ -26,7 +26,7 @@ func Download(blocks *uiblocks.UIBlocks) {
 	}()
 }
 
-func Process(blocks *uiblocks.UIBlocks, id int) {
+func Process(blocks *blocks.Blocks, id int) {
 	total := 10 + rand.Int()%20
 	w := blocks.NewBlock(3)
 	go func() {
@@ -41,7 +41,7 @@ func Process(blocks *uiblocks.UIBlocks, id int) {
 }
 
 func main() {
-	blocks := uiblocks.New(os.Stdout)
+	blocks := blocks.New(os.Stdout)
 
 	for b := 0; b < 5; b++ {
 		if rand.Int()%2 == 0 {
