@@ -12,6 +12,6 @@ type Mutex interface {
 	Locker
 }
 
-func NewMutex(pool Pool) Mutex {
+func NewMutex(pool PoolProvider) Mutex {
 	return syncutils.NewMutex2(NewMonitor(pool))
 }

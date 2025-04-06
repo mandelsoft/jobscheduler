@@ -50,20 +50,59 @@ type Processors[E any] struct {
 }
 
 var _ Pool = (*Processors[int])(nil)
+var _ PoolProvider = (*Processors[int])(nil)
 
-func NewProcessors[E any](ctx context.Context, creator Creator, limiter Limiter[E], n ...int) *Processors[E] {
-	ctx, cancel := context.WithCancel(ctx)
+func NewProcessors[E any](creator Creator, limiter Limiter[E], n ...int) *Processors[E] {
 	p := &Processors[E]{
 		limiter: limiter,
 		creator: creator,
-		ctx:     ctx,
-		cancel:  cancel,
 		runners: map[int]Runner{},
 	}
 	for i := 0; i < general.Optional(n...); i++ {
 		p.New()
 	}
 	return p
+}
+
+func (p *Processors[E]) GetPool() Pool {
+	return p
+}
+
+func (p *Processors[E]) IsStarted() bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	return p.ctx != nil
+}
+
+func (p *Processors[E]) Cancel() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.ctx != nil {
+		p.cancel()
+	}
+}
+
+func (p *Processors[E]) Run(ctx context.Context) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.ctx != nil {
+		return ErrAlreadyStarted
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	p.ctx, p.cancel = context.WithCancel(ctx)
+
+	for _, r := range p.runners {
+		go func() {
+			r.Run(p.ctx)
+			p.done.Done()
+		}()
+	}
+	return nil
 }
 
 func (p *Processors[E]) New() {
@@ -74,10 +113,13 @@ func (p *Processors[E]) New() {
 	p.done.Add(1)
 	r := p.creator(id)
 	p.runners[id] = r
-	go func() {
-		r.Run(p.ctx)
-		p.done.Done()
-	}()
+
+	if p.ctx != nil {
+		go func() {
+			r.Run(p.ctx)
+			p.done.Done()
+		}()
+	}
 }
 
 func (p *Processors[E]) Discard(ctx context.Context) error {

@@ -9,20 +9,26 @@ type processor struct {
 	scheduler *scheduler
 }
 
-func (p *processor) run(id int, ctx context.Context) {
-	p.id = id
+func (p *processor) Run(ctx context.Context) {
 	sctx := SchedulingContext{
 		p.scheduler,
+		p.scheduler.processors,
 	}
+	log.Debug("starting processor {{processor}}", "processor", p.id)
 	for {
 		job, err := p.scheduler.ready.Get(ctx)
 		if err != nil {
+			log.Debug("cancel processor {{processor}}", "processor", p.id, "error", err)
 			break
 		}
-		log.Debug("start job", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
+		if job == nil {
+			log.Debug("discard processor {{processor}}", "processor", p.id)
+			break
+		}
+		log.Debug("start job {{job}} on processor {{processor}}", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 		job.SetState(p.scheduler.running)
 		job.definition.runner.Run(sctx)
 		job.SetState(p.scheduler.done)
-		log.Debug("job finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
+		log.Debug("job {{job}} finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 	}
 }

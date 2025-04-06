@@ -40,7 +40,7 @@ func options(args ...any) (string, bool) {
 
 // NewMutex create a new Mutex, optional
 // arguments are of type bool for enable logging
-// or string for the name og the Mutex.
+// or string for the name of the Mutex.
 func NewMutex(args ...any) Mutex {
 	name, log := options(args...)
 	return &mutex{monitor: NewMutexMonitor(), log: log, name: name}

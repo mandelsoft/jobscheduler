@@ -9,7 +9,7 @@ import (
 
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/set"
-	"github.com/mandelsoft/jobscheduler/queue"
+	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/scheduler/condition"
 	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
@@ -21,7 +21,7 @@ type stateJobs interface {
 }
 
 type readyState struct {
-	queue.Queue[job, *job]
+	processors.Queue[job, *job]
 }
 
 func (s *readyState) State() State {
@@ -69,45 +69,6 @@ func (s *generalState) Elements() iter.Seq[*job] {
 	}
 }
 
-type processorState struct {
-	lock      synclog.Mutex
-	processor *processor
-
-	wg     sync.WaitGroup
-	cancel context.CancelFunc
-}
-
-func newProcessor(p *processor) *processorState {
-	return &processorState{lock: synclog.NewMutex(fmt.Sprintf("processor %d", p.id)), processor: p}
-}
-
-func (s *processorState) Run(ctx context.Context) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	ctx, s.cancel = context.WithCancel(ctx)
-	s.wg.Add(1)
-	go func() {
-		s.processor.run(0, ctx)
-		s.wg.Done()
-
-		s.processor.scheduler.RemoveProcessor(s.processor)
-	}()
-}
-
-func (s *processorState) Cancel() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if s.cancel != nil {
-		s.cancel()
-	}
-}
-
-func (s *processorState) Wait() {
-	s.wg.Wait()
-}
-
 type scheduler struct {
 	lock   synclog.Mutex
 	ctx    context.Context
@@ -116,7 +77,8 @@ type scheduler struct {
 	name       string
 	numRange   int
 	jobRange   int
-	processors map[*processor]*processorState
+	processors *processors.Processors[*job]
+	limiter    processors.Limiter[*job]
 
 	initial   *generalState
 	waiting   *generalState
@@ -133,90 +95,56 @@ func New(name ...string) Scheduler {
 	} else {
 		sn = "scheduler " + sn
 	}
-	return &scheduler{
+	q, l := processors.NewQueue[job](func(j *job) string { return j.id })
+	s := &scheduler{
 		name: general.OptionalDefaulted("scheduler", name...),
 		lock: synclog.NewMutex(sn),
 
-		processors: map[*processor]*processorState{},
-
 		initial:   newState(INITIAL),
-		ready:     &readyState{queue.New[job](func(j *job) string { return j.id })},
+		ready:     &readyState{q},
 		waiting:   newState(WAITING),
 		running:   newState(RUNNING),
 		done:      newState(DONE),
 		discarded: newState(DISCARDED),
+		limiter:   l,
 	}
+	s.processors = processors.NewProcessors[*job](s.create, s.limiter)
+	return s
 }
 
 func (s *scheduler) GetName() string {
 	return s.name
 }
 
-func (s *scheduler) Cancel() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *scheduler) GetPool() processors.Pool {
+	return s.processors
+}
 
-	if s.ctx != nil {
-		s.cancel()
-	}
+func (s *scheduler) Cancel() {
+	s.processors.Cancel()
 }
 
 func (s *scheduler) Wait() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	for _, p := range s.processors {
-		p.Wait()
-	}
+	s.processors.Wait()
 }
 
-func (s *scheduler) AddProcessor() *processor {
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.numRange++
-	p := &processor{
-		scheduler: s,
-		id:        s.numRange,
-	}
-
-	s.processors[p] = newProcessor(p)
-	if s.ctx != nil {
-		s.processors[p].Run(s.ctx)
-	}
-	return p
+func (s *scheduler) AddProcessor() {
+	s.processors.New()
 }
 
-func (s *scheduler) RemoveProcessor(p *processor) {
-	s.lock.Lock()
-
-	state := s.processors[p]
-	if state != nil {
-		s.lock.Unlock()
-
-		state.Cancel()
-		state.Wait()
-	} else {
-		s.lock.Unlock()
-	}
+func (s *scheduler) RemoveProcessor(ctx context.Context) {
+	s.processors.Discard(ctx)
 }
 
 func (s *scheduler) Run(ctx context.Context) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	return s.processors.Run(ctx)
+}
 
-	if s.ctx != nil {
-		return fmt.Errorf("already started")
+func (s *scheduler) create(id int) processors.Runner {
+	return &processor{
+		id:        id,
+		scheduler: s,
 	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	s.ctx, s.cancel = context.WithCancel(ctx)
-	for _, p := range s.processors {
-		p.Run(s.ctx)
-	}
-	return nil
 }
 
 func (s *scheduler) Raise(evt condition.Event) {
@@ -249,10 +177,7 @@ func (s *scheduler) Raise(evt condition.Event) {
 }
 
 func (s *scheduler) IsStarted() bool {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	return s.ctx != nil
+	return s.processors.IsStarted()
 }
 
 func (s *scheduler) Apply(def JobDefinition) (Job, error) {

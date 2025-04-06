@@ -38,6 +38,7 @@ type Queue[E any, P QueueElement[E]] interface {
 
 type SyncedQueue[E any, P QueueElement[E]] interface {
 	Queue[E, P]
+
 	Monitor() syncutils.Monitor
 	List() *utils.List[P]
 }
@@ -51,7 +52,7 @@ type queue[E any, P QueueElement[E]] struct {
 }
 
 func New[E any, P QueueElement[E]](describe ...func(P) string) Queue[E, P] {
-	return NewSynced[E, P]()
+	return NewSynced[E, P](describe...)
 }
 
 func NewSynced[E any, P QueueElement[E]](describe ...func(P) string) SyncedQueue[E, P] {

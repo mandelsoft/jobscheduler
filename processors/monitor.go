@@ -10,8 +10,8 @@ type Monitor interface {
 	syncutils.Monitor
 }
 
-func NewMonitor(pool Pool) Monitor {
-	return &monitor{syncutils.NewMutexMonitor(), pool}
+func NewMonitor(pool PoolProvider) Monitor {
+	return &monitor{syncutils.NewMutexMonitor(), pool.GetPool()}
 }
 
 type monitor struct {
@@ -29,16 +29,15 @@ func (m *monitor) Unlock() {
 
 func (m *monitor) Wait(ctx context.Context) error {
 	m.pool.Release()
-	err := m.monitor.Wait(ctx)
-	// err2 := m.pool.Alloc(ctx)
-	// return errors.Join(err, err2)
-	return err
+	// if wait is regularily signaled the processor and the lock
+	// is transferred
+	return m.monitor.Wait(ctx)
 }
 
 // Signal continues a waiting routine.
 // The lock and the processor are transferred.
 // The actual routine reallocates a processor.
-// If there is none to deblock, the lock
+// If there is none to signal/deblock, the lock
 // is released and the processor is kept.
 func (m *monitor) Signal() bool {
 	ok := m.monitor.Signal()

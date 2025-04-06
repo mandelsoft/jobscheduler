@@ -1,10 +1,12 @@
 package scheduler_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	. "github.com/mandelsoft/goutils/testutils"
+	"github.com/mandelsoft/jobscheduler/processors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -158,4 +160,66 @@ var _ = Describe("Scheduler Test Environment", func() {
 			}))
 		})
 	})
+
+	Context("sync operations", func() {
+		var barrier *Barrier
+
+		BeforeEach(func() {
+			barrier = NewBarrier(sched, 3)
+			sched.AddProcessor()
+			sched.Run(nil)
+		})
+
+		FIt("processes sequence", func() {
+			/*
+				id1 := "test[1]"
+				id2 := "test[2]"
+				id3 := "test[3]"
+
+			*/
+			handler := &JobHandler{}
+
+			def := scheduler.DefineJob("test",
+				scheduler.RunnerFunc(func(ctx scheduler.SchedulingContext) (scheduler.Result, error) {
+					barrier.Overcome(nil)
+					return nil, nil
+				})).AddHandler(handler)
+			job1 := Must(sched.Apply(def))
+			job2 := Must(sched.Apply(def))
+			job3 := Must(sched.Apply(def))
+
+			MustBeSuccessful(job3.Schedule())
+			MustBeSuccessful(job2.Schedule())
+			MustBeSuccessful(job1.Schedule())
+			job3.Wait()
+		})
+	})
 })
+
+type Barrier struct {
+	monitor   processors.Monitor
+	threshold int
+	count     int
+}
+
+func NewBarrier(pool processors.PoolProvider, threshold int) *Barrier {
+	return &Barrier{
+		monitor:   processors.NewMonitor(pool),
+		threshold: threshold,
+	}
+}
+
+func (b *Barrier) Overcome(ctx context.Context) error {
+	b.monitor.Lock()
+	defer b.monitor.Unlock()
+
+	b.count++
+	if b.count >= b.threshold {
+		for b.monitor.HasWaiting() {
+			b.monitor.Signal()
+			b.monitor.Lock()
+		}
+		return nil
+	}
+	return b.monitor.Wait(ctx)
+}

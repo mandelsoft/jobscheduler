@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mandelsoft/goutils/sliceutils"
+	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/queue"
 	"github.com/mandelsoft/jobscheduler/scheduler/condition"
 )
@@ -24,8 +25,10 @@ type Priority = queue.Priority
 const DEFAULT_PRIORITY Priority = 100
 
 type Scheduler interface {
-	AddProcessor() *processor
-	RemoveProcessor(*processor)
+	processors.PoolProvider
+
+	AddProcessor()
+	RemoveProcessor(ctx context.Context)
 	Run(ctx context.Context) error
 
 	Apply(JobDefinition) (Job, error)
@@ -50,7 +53,8 @@ type Job interface {
 }
 
 type SchedulingContext struct {
-	Sceduler Scheduler
+	Scheduler Scheduler
+	Pool      processors.Pool
 }
 
 type Result interface{}
