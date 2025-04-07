@@ -21,12 +21,12 @@ type stateJobs interface {
 	State() State
 }
 
-type readyState struct {
+type pendingState struct {
 	processors.Queue[job, *job]
 }
 
-func (s *readyState) State() State {
-	return READY
+func (s *pendingState) State() State {
+	return PENDING
 }
 
 type generalState struct {
@@ -95,8 +95,10 @@ type scheduler struct {
 
 	initial   *generalState
 	waiting   *generalState
-	ready     *readyState
+	pending   *pendingState
 	running   *generalState
+	ready     *generalState
+	blocked   *generalState
 	done      *generalState
 	discarded *generalState
 }
@@ -114,14 +116,17 @@ func New(name ...string) Scheduler {
 		lock: synclog.NewMutex(sn),
 
 		initial:   newState(INITIAL),
-		ready:     &readyState{q},
+		pending:   &pendingState{q},
 		waiting:   newState(WAITING),
 		running:   newState(RUNNING),
+		ready:     newState(READY),
+		blocked:   newState(BLOCKED),
 		done:      newState(DONE),
 		discarded: newState(DISCARDED),
 		limiter:   l,
 	}
 	s.processors = processors.NewProcessors[*job](s.create, s.limiter)
+	s.processors.SetStateHandler(&stateHandler{s})
 	return s
 }
 
@@ -134,8 +139,8 @@ func (s *scheduler) GetPool() processors.Pool {
 }
 
 func (s *scheduler) Cancel() {
-	s.ready.Monitor().Lock()
-	defer s.ready.Monitor().Unlock()
+	s.pending.Monitor().Lock()
+	defer s.pending.Monitor().Unlock()
 
 	s.processors.Cancel()
 }
@@ -184,7 +189,7 @@ func (s *scheduler) Raise(evt condition.Event) {
 			js := j.definition.trigger.GetState()
 			if js.Valid {
 				if js.Enabled {
-					j.SetState(s.ready)
+					j.SetState(s.pending)
 				} else {
 					if js.Final {
 						j.SetState(s.discarded)
@@ -224,4 +229,22 @@ func (s *scheduler) Apply(def JobDefinition) (Job, error) {
 	}
 	j.SetState(s.initial)
 	return j, nil
+}
+
+type stateHandler struct {
+	scheduler *scheduler
+}
+
+var _ processors.StateHandler = (*stateHandler)(nil)
+
+func (s *stateHandler) Ready(ctx context.Context) {
+	GetJob(ctx).(*job).SetState(s.scheduler.ready)
+}
+
+func (s *stateHandler) Running(ctx context.Context) {
+	GetJob(ctx).(*job).SetState(s.scheduler.running)
+}
+
+func (s *stateHandler) Block(ctx context.Context) {
+	GetJob(ctx).(*job).SetState(s.scheduler.blocked)
 }

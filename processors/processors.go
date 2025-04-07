@@ -51,10 +51,17 @@ type Runner interface {
 
 type Creator func(id int) Runner
 
+type StateHandler interface {
+	Ready(ctx context.Context)
+	Running(ctx context.Context)
+	Block(ctx context.Context)
+}
+
 type Processors[E any] struct {
 	lock    synclog.Mutex
 	limiter Limiter[E]
 	creator Creator
+	handler StateHandler
 
 	ids     Ids
 	runners map[int]Runner
@@ -72,6 +79,7 @@ func NewProcessors[E any](creator Creator, limiter Limiter[E], n ...int) *Proces
 		limiter: limiter,
 		creator: creator,
 		runners: map[int]Runner{},
+		handler: &dummyHandler{},
 	}
 	for i := 0; i < general.Optional(n...); i++ {
 		p.New()
@@ -88,6 +96,10 @@ func (p *Processors[E]) IsStarted() bool {
 	defer p.lock.Unlock()
 
 	return p.ctx != nil
+}
+
+func (p *Processors[E]) SetStateHandler(h StateHandler) {
+	p.handler = h
 }
 
 func (p *Processors[E]) Cancel() {
@@ -148,9 +160,30 @@ func (p *Processors[E]) Wait() {
 ////////////////////////////////////////////////////////////////////////////////
 
 func (p *Processors[E]) Alloc(ctx context.Context) error {
-	return p.Discard(ctx)
+	p.handler.Ready(ctx)
+	err := p.Discard(ctx)
+	if err == nil {
+		p.handler.Running(ctx)
+	}
+	return err
 }
 
-func (p *Processors[E]) Release(context.Context) {
+func (p *Processors[E]) Release(ctx context.Context) {
+	p.handler.Block(ctx)
 	p.New()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type dummyHandler struct{}
+
+var _ StateHandler = (*dummyHandler)(nil)
+
+func (d *dummyHandler) Ready(ctx context.Context) {
+}
+
+func (d *dummyHandler) Running(ctx context.Context) {
+}
+
+func (d *dummyHandler) Block(ctx context.Context) {
 }

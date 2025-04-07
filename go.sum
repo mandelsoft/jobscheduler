@@ -32,6 +32,10 @@ github.com/mandelsoft/goutils v0.0.0-20250303160355-2c16969f387e h1:CUMGraUps5W5
 github.com/mandelsoft/goutils v0.0.0-20250303160355-2c16969f387e/go.mod h1:UeYhFI0gRoiTcmZH7VD/Oy5dYz4O8vyOv5tsiBTEUPo=
 github.com/mandelsoft/goutils v0.0.0-20250316130358-bfa4518828cc h1:kP874xiHZRDsKPYSDdkAXL1KAZ0lN648mJQ+ly5xrAI=
 github.com/mandelsoft/goutils v0.0.0-20250316130358-bfa4518828cc/go.mod h1:UeYhFI0gRoiTcmZH7VD/Oy5dYz4O8vyOv5tsiBTEUPo=
+github.com/mandelsoft/goutils v0.0.0-20250323093506-2cf95092ca48 h1:TJ7MrrGBfHpKh/POss0Fkuh44RAi2vtGYsnsuiQIHS8=
+github.com/mandelsoft/goutils v0.0.0-20250323093506-2cf95092ca48/go.mod h1:UeYhFI0gRoiTcmZH7VD/Oy5dYz4O8vyOv5tsiBTEUPo=
+github.com/mandelsoft/goutils v0.0.0-20250407170123-aaa63558c411 h1:S8RxMyFJk5CjuE8QTh8OrIcUAxIAzMlFCCGNwnONUJc=
+github.com/mandelsoft/goutils v0.0.0-20250407170123-aaa63558c411/go.mod h1:UeYhFI0gRoiTcmZH7VD/Oy5dYz4O8vyOv5tsiBTEUPo=
 github.com/mandelsoft/logging v0.0.0-20240618075559-fdca28a87b0a h1:MAvh0gbP2uwKmf7wWCkYCzrYa6vPjBvYeGhoUlVHwtI=
 github.com/mandelsoft/logging v0.0.0-20240618075559-fdca28a87b0a/go.mod h1:uO460C1lIB3IOOgrbXhAlz3AKsOv4T2K6ALBn3PwuSg=
 github.com/mandelsoft/vfs v0.4.3 h1:2UMrxQkMXkcHyuqSFhgFDupQ1fmqpKLZuu04DOHx1PA=

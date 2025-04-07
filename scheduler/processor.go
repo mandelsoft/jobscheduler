@@ -13,7 +13,7 @@ func (p *processor) Run(ctx context.Context) {
 	sctx := ctx
 	log.Debug("starting processor {{processor}}", "processor", p.id)
 	for {
-		job, err := p.scheduler.ready.Get(ctx)
+		job, err := p.scheduler.pending.Get(ctx)
 		if err != nil {
 			log.Debug("cancel processor {{processor}}", "processor", p.id, "error", err)
 			break

@@ -21,7 +21,7 @@ type Limiter[E any] interface {
 
 	// Discard requests one consumption request to be discarded.
 	// It blocks until a matching consumption request could be
-	// discarded. Afterward, a new Go routine can continue replacing
+	// discarded. Afterward, a Go routine can continue replacing
 	// the discarded one.
 	Discard(ctx context.Context) error
 

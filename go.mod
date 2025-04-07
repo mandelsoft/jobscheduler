@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/briandowns/spinner v1.23.2
 	github.com/fatih/color v1.18.0
-	github.com/mandelsoft/goutils v0.0.0-20250316130358-bfa4518828cc
+	github.com/mandelsoft/goutils v0.0.0-20250407170123-aaa63558c411
 	github.com/mandelsoft/logging v0.0.0-20240618075559-fdca28a87b0a
 	github.com/mattn/go-isatty v0.0.20
 	github.com/onsi/ginkgo/v2 v2.22.2

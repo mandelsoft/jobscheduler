@@ -13,9 +13,11 @@ type State string
 
 const (
 	INITIAL   State = "initial"
-	READY     State = "ready"
+	PENDING   State = "pending"
 	WAITING   State = "waiting"
 	RUNNING   State = "running"
+	READY     State = "ready"
+	BLOCKED   State = "blocked"
 	DONE      State = "done"
 	DISCARDED State = "discarded"
 )

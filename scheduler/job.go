@@ -75,11 +75,15 @@ func (j *job) SetState(jobs stateJobs) {
 }
 
 func (j *job) setState(jobs stateJobs) {
+	if jobs == j.state {
+		// return
+	}
 	if j.state != nil {
 		j.state.Remove(j)
 	}
-	jobs.Add(j)
+
 	j.state = jobs
+	jobs.Add(j)
 	e := JobEvent{j, jobs.State()}
 
 	wg := &sync.WaitGroup{}
@@ -97,9 +101,9 @@ func (j *job) setState(jobs stateJobs) {
 
 	j.lock.Unlock()
 	wg.Wait()
-	switch j.state.State() {
+	switch jobs.State() {
 	case DONE, DISCARDED:
-		fmt.Printf("job %s done\n", j.id)
+		fmt.Printf("job %s %s\n", j.id, jobs.State())
 		j.wg.Done()
 	}
 }
@@ -137,6 +141,7 @@ func (j *job) Schedule() error {
 
 	fmt.Printf("schedule job %s\n", j.id)
 
+	j.wg.Add(1)
 	if j.definition.discard != nil {
 		js := j.definition.discard.GetState()
 		if js.Valid {
@@ -146,11 +151,9 @@ func (j *job) Schedule() error {
 		}
 	}
 
-	j.wg.Add(1)
-
 	var jobs stateJobs
 	if j.definition.trigger == nil || j.definition.trigger.IsEnabled() {
-		jobs = j.scheduler.ready
+		jobs = j.scheduler.pending
 	} else {
 		jobs = j.scheduler.waiting
 	}

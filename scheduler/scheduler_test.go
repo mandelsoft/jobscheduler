@@ -6,10 +6,10 @@ import (
 	"sync"
 
 	. "github.com/mandelsoft/goutils/testutils"
-	"github.com/mandelsoft/jobscheduler/processors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/scheduler"
 )
 
@@ -73,7 +73,7 @@ var _ = Describe("Scheduler Test Environment", func() {
 			MustBeSuccessful(job.Schedule())
 			job.Wait()
 
-			Expect(handler.events).To(Equal(EVTs(id, scheduler.READY, scheduler.RUNNING, scheduler.DONE)))
+			Expect(handler.events).To(Equal(EVTs(id, scheduler.PENDING, scheduler.RUNNING, scheduler.DONE)))
 		})
 
 		It("processes sequence", func() {
@@ -102,13 +102,13 @@ var _ = Describe("Scheduler Test Environment", func() {
 				EVT(id3, scheduler.INITIAL),
 				EVT(id3, scheduler.WAITING),
 				EVT(id2, scheduler.WAITING),
-				EVT(id1, scheduler.READY),
+				EVT(id1, scheduler.PENDING),
 				EVT(id1, scheduler.RUNNING),
 				EVT(id1, scheduler.DONE),
-				EVT(id2, scheduler.READY),
+				EVT(id2, scheduler.PENDING),
 				EVT(id2, scheduler.RUNNING),
 				EVT(id2, scheduler.DONE),
-				EVT(id3, scheduler.READY),
+				EVT(id3, scheduler.PENDING),
 				EVT(id3, scheduler.RUNNING),
 				EVT(id3, scheduler.DONE),
 			}))
@@ -148,13 +148,13 @@ var _ = Describe("Scheduler Test Environment", func() {
 				EVT(id3, scheduler.INITIAL),
 				EVT(id3, scheduler.WAITING),
 				EVT(id2, scheduler.WAITING),
-				EVT(id1, scheduler.READY),
+				EVT(id1, scheduler.PENDING),
 				EVT(id1, scheduler.RUNNING),
 				EVT(id1, scheduler.DONE),
-				EVT(id2, scheduler.READY),
+				EVT(id2, scheduler.PENDING),
 				EVT(id2, scheduler.RUNNING),
 				EVT(id2, scheduler.DONE),
-				EVT(id3, scheduler.READY),
+				EVT(id3, scheduler.PENDING),
 				EVT(id3, scheduler.RUNNING),
 				EVT(id3, scheduler.DONE),
 			}))
@@ -171,12 +171,10 @@ var _ = Describe("Scheduler Test Environment", func() {
 		})
 
 		It("processes sequence", func() {
-			/*
-				id1 := "test[1]"
-				id2 := "test[2]"
-				id3 := "test[3]"
+			id1 := "test[1]"
+			id2 := "test[2]"
+			id3 := "test[3]"
 
-			*/
 			// logging.DefaultContext().SetDefaultLevel(logging.TraceLevel)
 			handler := &JobHandler{}
 
@@ -195,6 +193,26 @@ var _ = Describe("Scheduler Test Environment", func() {
 			MustBeSuccessful(job2.Schedule())
 			MustBeSuccessful(job1.Schedule())
 			job3.Wait()
+			job2.Wait()
+			job1.Wait()
+
+			Expect(handler.events).To(ContainInOrder(
+				EVT(id3, scheduler.BLOCKED),
+				EVT(id3, scheduler.READY),
+				EVT(id3, scheduler.RUNNING),
+				EVT(id3, scheduler.DONE),
+			))
+			Expect(handler.events).To(ContainInOrder(
+				EVT(id3, scheduler.BLOCKED),
+				EVT(id2, scheduler.BLOCKED),
+				EVT(id2, scheduler.READY),
+				EVT(id2, scheduler.RUNNING),
+				EVT(id2, scheduler.DONE),
+			))
+			Expect(handler.events).To(ContainInOrder(
+				EVT(id1, scheduler.RUNNING),
+				EVT(id1, scheduler.DONE),
+			))
 		})
 	})
 })
@@ -218,10 +236,7 @@ func (b *Barrier) Overcome(ctx context.Context) error {
 
 	b.count++
 	if b.count >= b.threshold {
-		for b.monitor.HasWaiting() {
-			b.monitor.Signal(ctx)
-			b.monitor.Lock()
-		}
+		b.monitor.SignalAll()
 		return nil
 	}
 	return b.monitor.Wait(ctx)
