@@ -69,16 +69,21 @@ func (q *limiter[E]) Discard(ctx context.Context) error {
 	q.monitor.Lock()
 
 	q.discard++
+	log.Debug("discarding processor", "discarded", q.discard)
 	if q.monitor.HasWaiting() {
 		// wakeup waiting go routine to be cancelled
-		q.monitor.Signal()
+		log.Debug("signal waiting routine to be discarded")
+		q.monitor.Signal(ctx)
 		return nil
 	}
 
 	defer q.monitor.Unlock()
+	log.Debug("wait for discarded routine")
 	if err := q.waiting.Wait(ctx, q.monitor); err != nil {
+		log.Debug("waiting aborted", "error", err)
 		return err
 	}
+	log.Debug("routine was successfully discarded")
 	return nil
 }
 
@@ -89,7 +94,7 @@ func (q *limiter[E]) Request(ctx context.Context) (bool, E, error) {
 
 	if q.discard > 0 {
 		q.discard--
-		q.waiting.Signal(q.monitor)
+		q.waiting.Signal(ctx, q.monitor)
 		return false, _nil, nil
 	}
 
@@ -100,6 +105,7 @@ func (q *limiter[E]) Request(ctx context.Context) (bool, E, error) {
 		err := q.monitor.Wait(ctx)
 		q.blocked--
 		if err != nil {
+			log.Debug("wait aborted", "error", err)
 			return false, _nil, err
 		}
 		if q.discard > 0 {

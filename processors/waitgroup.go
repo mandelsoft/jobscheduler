@@ -4,19 +4,17 @@ import (
 	"context"
 	"sync"
 
-	"github.com/mandelsoft/goutils/errors"
 	"github.com/mandelsoft/jobscheduler/syncutils/utils"
 )
 
 type WaitGroup struct {
 	lock    sync.Mutex
-	pool    Pool
 	count   int
 	waiting utils.Waiting
 }
 
-func NewWaitGroup(pool Pool) *WaitGroup {
-	return &WaitGroup{pool: pool}
+func NewWaitGroup() *WaitGroup {
+	return &WaitGroup{}
 }
 
 func (wg *WaitGroup) Add(delta int) {
@@ -43,8 +41,5 @@ func (wg *WaitGroup) Wait(ctx context.Context) error {
 	if wg.count == 0 {
 		return nil
 	}
-	wg.pool.Release()
-	err := wg.waiting.Wait(ctx, &wg.lock)
-	err2 := wg.pool.Alloc(ctx)
-	return errors.Join(err, err2)
+	return wg.waiting.Wait(ctx, &wg.lock)
 }

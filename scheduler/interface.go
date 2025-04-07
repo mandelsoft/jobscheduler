@@ -38,6 +38,8 @@ type Scheduler interface {
 }
 
 type Job interface {
+	String() string
+
 	GetId() string
 	GetScheduler() Scheduler
 
@@ -52,10 +54,7 @@ type Job interface {
 	UnregisterHandler(handler EventHandler)
 }
 
-type SchedulingContext struct {
-	Scheduler Scheduler
-	Pool      processors.Pool
-}
+type SchedulingContext = context.Context
 
 type Result interface{}
 

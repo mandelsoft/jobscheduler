@@ -10,10 +10,7 @@ type processor struct {
 }
 
 func (p *processor) Run(ctx context.Context) {
-	sctx := SchedulingContext{
-		p.scheduler,
-		p.scheduler.processors,
-	}
+	sctx := ctx
 	log.Debug("starting processor {{processor}}", "processor", p.id)
 	for {
 		job, err := p.scheduler.ready.Get(ctx)
@@ -27,7 +24,7 @@ func (p *processor) Run(ctx context.Context) {
 		}
 		log.Debug("start job {{job}} on processor {{processor}}", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 		job.SetState(p.scheduler.running)
-		job.definition.runner.Run(sctx)
+		job.definition.runner.Run(setJob(sctx, job))
 		job.SetState(p.scheduler.done)
 		log.Debug("job {{job}} finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 	}

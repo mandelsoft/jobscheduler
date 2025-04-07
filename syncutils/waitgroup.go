@@ -13,8 +13,8 @@ type WaitGroup struct {
 	waiting utils.Waiting
 }
 
-func NewWaitGroup() *WaitGroup {
-	return &WaitGroup{}
+func NewWaitGroup(h ...utils.WaitingHandler) *WaitGroup {
+	return &WaitGroup{waiting: utils.NewWaiting(h...)}
 }
 
 func (wg *WaitGroup) Add(delta int) {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/set"
+	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/scheduler/condition"
 	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
@@ -69,6 +70,18 @@ func (s *generalState) Elements() iter.Seq[*job] {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+var schedulerAttr = ctxutils.NewAttribute[Scheduler]()
+
+func GetScheduler(ctx context.Context) Scheduler {
+	return schedulerAttr.Get(ctx)
+}
+
+func setScheduler(ctx context.Context, scheduler Scheduler) context.Context {
+	return schedulerAttr.Set(ctx, scheduler)
+}
+
 type scheduler struct {
 	lock   synclog.Mutex
 	ctx    context.Context
@@ -91,13 +104,13 @@ type scheduler struct {
 func New(name ...string) Scheduler {
 	sn := general.Optional(name...)
 	if sn == "" {
-		sn = "scheduler"
+		sn = "scheduler" + ctxutils.NewId()
 	} else {
 		sn = "scheduler " + sn
 	}
-	q, l := processors.NewQueue[job](func(j *job) string { return j.id })
+	q, l := processors.NewQueueWithName[job](sn, func(j *job) string { return j.id })
 	s := &scheduler{
-		name: general.OptionalDefaulted("scheduler", name...),
+		name: sn,
 		lock: synclog.NewMutex(sn),
 
 		initial:   newState(INITIAL),
@@ -121,6 +134,9 @@ func (s *scheduler) GetPool() processors.Pool {
 }
 
 func (s *scheduler) Cancel() {
+	s.ready.Monitor().Lock()
+	defer s.ready.Monitor().Unlock()
+
 	s.processors.Cancel()
 }
 
@@ -137,7 +153,10 @@ func (s *scheduler) RemoveProcessor(ctx context.Context) {
 }
 
 func (s *scheduler) Run(ctx context.Context) error {
-	return s.processors.Run(ctx)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return s.processors.Run(setScheduler(ctx, s))
 }
 
 func (s *scheduler) create(id int) processors.Runner {

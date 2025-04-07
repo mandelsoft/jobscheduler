@@ -170,18 +170,21 @@ var _ = Describe("Scheduler Test Environment", func() {
 			sched.Run(nil)
 		})
 
-		FIt("processes sequence", func() {
+		It("processes sequence", func() {
 			/*
 				id1 := "test[1]"
 				id2 := "test[2]"
 				id3 := "test[3]"
 
 			*/
+			// logging.DefaultContext().SetDefaultLevel(logging.TraceLevel)
 			handler := &JobHandler{}
 
 			def := scheduler.DefineJob("test",
 				scheduler.RunnerFunc(func(ctx scheduler.SchedulingContext) (scheduler.Result, error) {
-					barrier.Overcome(nil)
+					fmt.Printf("running %s\n", scheduler.GetJob(ctx))
+					barrier.Overcome(ctx)
+					fmt.Printf("finishing %s\n", scheduler.GetJob(ctx))
 					return nil, nil
 				})).AddHandler(handler)
 			job1 := Must(sched.Apply(def))
@@ -204,7 +207,7 @@ type Barrier struct {
 
 func NewBarrier(pool processors.PoolProvider, threshold int) *Barrier {
 	return &Barrier{
-		monitor:   processors.NewMonitor(pool),
+		monitor:   processors.NewMonitor(),
 		threshold: threshold,
 	}
 }
@@ -216,7 +219,7 @@ func (b *Barrier) Overcome(ctx context.Context) error {
 	b.count++
 	if b.count >= b.threshold {
 		for b.monitor.HasWaiting() {
-			b.monitor.Signal()
+			b.monitor.Signal(ctx)
 			b.monitor.Lock()
 		}
 		return nil

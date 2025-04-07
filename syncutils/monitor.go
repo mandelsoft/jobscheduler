@@ -26,7 +26,7 @@ type Monitor interface {
 	// go routine and true is returned.
 	// If no waiting go-routine could be found to transfer the lock to
 	// the lock is released and false is returned.
-	Signal() bool
+	Signal(ctx context.Context) bool
 
 	// HasWaiting returns whether there is a blocked Go routine.
 	// This method MUST only be called under a monitor lock.
@@ -46,20 +46,20 @@ type monitor struct {
 	waiting utils.Waiting
 }
 
-func NewMonitor(l sync.Locker) Monitor {
-	return &monitor{Locker: l}
+func NewMonitor(l sync.Locker, h ...utils.WaitingHandler) Monitor {
+	return &monitor{Locker: l, waiting: utils.NewWaiting(h...)}
 }
 
-func NewMutexMonitor() Monitor {
-	return &monitor{Locker: &sync.Mutex{}}
+func NewMutexMonitor(h ...utils.WaitingHandler) Monitor {
+	return NewMonitor(&sync.Mutex{}, h...)
 }
 
 func (w *monitor) Wait(ctx context.Context) error {
 	return w.waiting.Wait(ctx, w.Locker)
 }
 
-func (w *monitor) Signal() bool {
-	return w.waiting.Signal(w.Locker)
+func (w *monitor) Signal(ctx context.Context) bool {
+	return w.waiting.Signal(ctx, w.Locker)
 }
 
 func (w *monitor) SignalAll() bool {

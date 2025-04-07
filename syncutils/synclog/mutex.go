@@ -26,7 +26,7 @@ func (l *Mutex) Lock() {
 	if (DoLog || l.log) && Log.Enabled(logging.TraceLevel) {
 		TraceCaller("locking {{lock}}", "lock", l.name)
 		l.lock.Lock()
-		Log.Trace("locked", "lock", l.name)
+		Log.Trace("locked {{lock}}", "lock", l.name)
 	} else {
 		l.lock.Lock()
 	}
@@ -36,7 +36,7 @@ func (l *Mutex) LockWithReason(reason string) {
 	if (DoLog || l.log) && Log.Enabled(logging.TraceLevel) {
 		Log.Trace("locking {{lock}}", "lock", l.name, "reason", reason)
 		l.lock.Lock()
-		Log.Trace("locked", "lock", l.name)
+		Log.Trace("locked {{lock}}", "lock", l.name)
 	} else {
 		l.lock.Lock()
 	}

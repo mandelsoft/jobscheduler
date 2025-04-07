@@ -62,7 +62,7 @@ func (l *rwMutex) Unlock() {
 		panic("unlocking unlocked rwmutex")
 	}
 	l.locked = false
-	l.monitor.Signal()
+	l.monitor.Signal(nil)
 }
 
 func (l *rwMutex) RLock(ctx context.Context) error {
@@ -98,7 +98,7 @@ func (l *rwMutex) RUnlock() {
 	}
 	l.readers--
 	if l.readers == 0 {
-		l.monitor.Signal()
+		l.monitor.Signal(nil)
 	} else {
 		l.monitor.Unlock()
 	}

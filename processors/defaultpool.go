@@ -10,6 +10,7 @@ import (
 type defaultPool struct {
 	monitor   syncutils.Monitor
 	available int
+	self      Pool
 }
 
 // NewDefaultPool provides a pool with an implicit capacity.
@@ -20,21 +21,23 @@ type defaultPool struct {
 // sync operation. To keep this capacity it should call Release
 // before it exits, otherwise the capacity is left unchanged.
 func NewDefaultPool(initial ...int) Pool {
-	return &defaultPool{monitor: syncutils.NewMutexMonitor(), available: general.Optional(initial...)}
+	p := &defaultPool{monitor: syncutils.NewMutexMonitor(), available: general.Optional(initial...)}
+	p.self = p
+	return p
 }
 
 func (p *defaultPool) GetPool() Pool {
-	return p
+	return p.self
 }
 
 func (p *defaultPool) Monitor() syncutils.Monitor {
 	return p.Monitor()
 }
 
-func (p *defaultPool) Release() {
+func (p *defaultPool) Release(ctx context.Context) {
 	p.monitor.Lock()
 	p.available++
-	p.monitor.Signal()
+	p.monitor.Signal(ctx)
 }
 
 func (p *defaultPool) Alloc(ctx context.Context) error {

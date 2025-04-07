@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/mandelsoft/goutils/general"
+	"github.com/mandelsoft/goutils/generics"
 	"github.com/mandelsoft/goutils/matcher"
 	"github.com/mandelsoft/jobscheduler/syncutils"
+	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 	"github.com/mandelsoft/jobscheduler/syncutils/utils"
 )
 
@@ -56,11 +58,15 @@ func New[E any, P QueueElement[E]](describe ...func(P) string) Queue[E, P] {
 }
 
 func NewSynced[E any, P QueueElement[E]](describe ...func(P) string) SyncedQueue[E, P] {
-	return &queue[E, P]{monitor: syncutils.NewMutexMonitor(), describe: general.Optional(describe...)}
+	return &queue[E, P]{monitor: syncutils.NewMonitor(generics.Pointer(synclog.NewMutex("monitor"))), describe: general.Optional(describe...)}
+}
+
+func NewSyncedWithName[E any, P QueueElement[E]](name string, describe ...func(P) string) SyncedQueue[E, P] {
+	return &queue[E, P]{monitor: syncutils.NewMonitor(generics.Pointer(synclog.NewMutex(name))), describe: general.Optional(describe...)}
 }
 
 func _New[E any, P QueueElement[E]](describe ...func(P) string) queue[E, P] {
-	return queue[E, P]{monitor: syncutils.NewMutexMonitor(), describe: general.Optional(describe...)}
+	return queue[E, P]{monitor: syncutils.NewMonitor(generics.Pointer(synclog.NewMutex("monitor"))), describe: general.Optional(describe...)}
 }
 
 func (q *queue[E, P]) Monitor() syncutils.Monitor {
@@ -95,7 +101,7 @@ func (q *queue[E, P]) tryGet() (P, bool) {
 func (q *queue[E, P]) Add(elem P) {
 	q.monitor.Lock()
 	q.addToQueue(elem)
-	if !q.monitor.Signal() {
+	if !q.monitor.Signal(nil) {
 		log.Debug("nobody waiting for queue entry")
 	}
 }

@@ -10,7 +10,7 @@ func NotFunc(f func() bool) func() bool {
 }
 
 func Sleep(p Pool, d time.Duration, ctx context.Context) error {
-	p.Release()
+	p.Release(nil)
 	if ctx == nil {
 		time.Sleep(d)
 	} else {

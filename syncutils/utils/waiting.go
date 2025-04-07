@@ -9,6 +9,7 @@ import (
 )
 
 type blocker struct {
+	lock   sync.Mutex
 	locked bool
 	c      chan struct{}
 }
@@ -20,25 +21,41 @@ func newBlocker() *blocker {
 func (b *blocker) Wait(ctx context.Context) (bool, error) {
 	if ctx != nil {
 		select {
-		case <-b.c:
-			return b.locked, nil
 		case <-ctx.Done():
-			return false, ctx.Err()
+			log.Debug("waiting: cancelled", "locked", b.locked, "p", b)
+			// coordinate cancel and deblock
+			if b.Signal(false) {
+				return false, ctx.Err()
+			}
+		case <-b.c:
 		}
-	} else {
-		<-b.c
-		return b.locked, nil
 	}
+	<-b.c
+	log.Debug("waiting: deblocked", "locked", b.locked, "p", b)
+	return b.locked, nil
 }
 
 // Signal signals the blocker continue
 // a pending or upcoming Wait.
 // The signal indicated whether a lock is transferred
 // or not.
-func (b *blocker) Signal(locked bool) {
-	// b.c <- struct{}{}
+func (b *blocker) Signal(locked bool) bool {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	// coordinate cancel ad deblock
+	select {
+	case <-b.c:
+		// if already cancelled prepend not to be signalled to avoid
+		// lock transfer.
+		log.Debug("waiting: already deblocked", "locked", locked, "p", b)
+		return false
+	default:
+	}
 	b.locked = locked
+	log.Debug("waiting: deblocking", "locked", locked, "p", b)
 	close(b.c)
+	return true
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,12 +81,25 @@ func (b *Block) Wait(ctx context.Context) (bool, error) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// WaitingHandler describes optional
+// resource handing operations when waiting for
+// a condition using Waiting.
+type WaitingHandler interface {
+	Release(ctx context.Context)
+	Alloc(ctx context.Context) error
+}
+
 // Waiting provides basic monitor functionality
 // usable to implement synchronization objects.
 // All methods must be called under a lock held
 // for the synchronization object implementation.
 type Waiting struct {
 	waiting List[*blocker]
+	handler WaitingHandler
+}
+
+func NewWaiting(handler ...WaitingHandler) Waiting {
+	return Waiting{handler: general.Optional(handler...)}
 }
 
 // HasWaiting returns whether there are waiting Go routines.
@@ -108,9 +138,21 @@ func (w *Waiting) Wait(ctx context.Context, opt ...sync.Locker) error {
 	if l != nil {
 		l.Unlock()
 	}
+	if w.handler != nil {
+		w.handler.Release(ctx)
+	}
 	locked, err := b.Wait(ctx)
-	if !locked && l != nil {
-		l.Lock()
+	log.Debug("waiting: wait done", "locked", locked, "error", err)
+	if !locked {
+		if w.handler != nil {
+			err2 := w.handler.Alloc(ctx)
+			if err == nil {
+				err = err2
+			}
+		}
+		if l != nil {
+			l.Lock()
+		}
 	}
 	return err
 }
@@ -123,19 +165,22 @@ func (w *Waiting) Wait(ctx context.Context, opt ...sync.Locker) error {
 // If the optional sync.Locker is given, it is released if
 // no waiting go-routine could be found to transfer the lock to
 // and false is returned.
-func (w *Waiting) Signal(opt ...sync.Locker) bool {
+func (w *Waiting) Signal(ctx context.Context, opt ...sync.Locker) bool {
 	l := general.Optional(opt...)
 	if w.waiting.IsEmpty() {
 		log.Debug("nothing found to deblock")
 		if l != nil {
 			l.Unlock()
 		}
+		if w.handler != nil {
+			w.handler.Release(ctx)
+		}
 		return false
 	}
 
-	w.waiting.RemoveLast().Signal(true)
-	log.Debug("deblock succeeded")
-	return true
+	done := w.waiting.RemoveLast().Signal(true)
+	log.Debug("deblock succeeded", "done", done)
+	return done
 }
 
 // SignalAll unblocks all waiting

@@ -8,6 +8,8 @@ import (
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/matcher"
 	"github.com/mandelsoft/goutils/sliceutils"
+	"github.com/mandelsoft/jobscheduler/ctxutils"
+	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
 
 type Ids []int
@@ -31,6 +33,18 @@ func (ids *Ids) Remove(id int) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+var runnerAttr = ctxutils.NewAttribute[Runner]()
+
+func GetRunner(ctx context.Context) Runner {
+	return runnerAttr.Get(ctx)
+}
+
+func setRunner(ctx context.Context, r Runner) context.Context {
+	return runnerAttr.Set(ctx, r)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type Runner interface {
 	Run(context.Context)
 }
@@ -38,7 +52,7 @@ type Runner interface {
 type Creator func(id int) Runner
 
 type Processors[E any] struct {
-	lock    sync.Mutex
+	lock    synclog.Mutex
 	limiter Limiter[E]
 	creator Creator
 
@@ -54,6 +68,7 @@ var _ PoolProvider = (*Processors[int])(nil)
 
 func NewProcessors[E any](creator Creator, limiter Limiter[E], n ...int) *Processors[E] {
 	p := &Processors[E]{
+		lock:    synclog.NewMutex("processors"),
 		limiter: limiter,
 		creator: creator,
 		runners: map[int]Runner{},
@@ -94,11 +109,11 @@ func (p *Processors[E]) Run(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	p.ctx, p.cancel = context.WithCancel(ctx)
+	p.ctx, p.cancel = context.WithCancel(SetPool(ctx, p))
 
 	for _, r := range p.runners {
 		go func() {
-			r.Run(p.ctx)
+			r.Run(setRunner(p.ctx, r))
 			p.done.Done()
 		}()
 	}
@@ -136,6 +151,6 @@ func (p *Processors[E]) Alloc(ctx context.Context) error {
 	return p.Discard(ctx)
 }
 
-func (p *Processors[E]) Release() {
+func (p *Processors[E]) Release(context.Context) {
 	p.New()
 }

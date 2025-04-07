@@ -1,12 +1,24 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"sync"
 
+	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
+
+var jobAttr = ctxutils.NewAttribute[Job]()
+
+func GetJob(ctx context.Context) Job {
+	return jobAttr.Get(ctx)
+}
+
+func setJob(ctx context.Context, j *job) context.Context {
+	return jobAttr.Set(ctx, j)
+}
 
 type job struct {
 	id        string
@@ -26,6 +38,10 @@ var _ Job = (*job)(nil)
 
 func (j *job) GetId() string {
 	return j.id
+}
+
+func (j *job) String() string {
+	return fmt.Sprintf("%s[%s]", j.id, j.state.State())
 }
 
 func (j *job) GetScheduler() Scheduler {
@@ -75,8 +91,8 @@ func (j *job) setState(jobs stateJobs) {
 			h.HandleJobEvent(e)
 		}
 		j.scheduler.Raise(e)
-		wg.Done()
 		fmt.Printf("report finished %s\n", e)
+		wg.Done()
 	}(slices.Clone(j.handlers))
 
 	j.lock.Unlock()

@@ -3,6 +3,7 @@ package processors
 import (
 	"context"
 
+	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/queue"
 	"github.com/mandelsoft/jobscheduler/syncutils"
 )
@@ -23,6 +24,8 @@ import (
 type Queue[E any, P queue.QueueElement[E]] interface {
 	Add(elem P)
 	Remove(elem P)
+
+	Monitor() syncutils.Monitor
 
 	// Get returns an element from the queue.
 	// It blocks until an element can be delivered,
@@ -48,7 +51,11 @@ type _queue[E any, P queue.QueueElement[E]] struct {
 }
 
 func NewQueue[E any, P queue.QueueElement[E]](describe ...func(P) string) (Queue[E, P], Limiter[P]) {
-	q := queue.NewSynced[E, P](describe...)
+	return NewQueueWithName("queue"+ctxutils.NewId(), describe...)
+}
+
+func NewQueueWithName[E any, P queue.QueueElement[E]](name string, describe ...func(P) string) (Queue[E, P], Limiter[P]) {
+	q := queue.NewSyncedWithName[E, P](name, describe...)
 	l := NewLimiter[P](q.Monitor(), NotFunc(q.List().IsEmpty),
 		q.List().RemoveFirst)
 	return &_queue[E, P]{queue: q, limiter: l}, l

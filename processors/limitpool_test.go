@@ -36,7 +36,7 @@ var _ = Describe("Limit Pool Test Environment", func() {
 				time.Sleep(100 * time.Millisecond)
 				fmt.Printf("unlocking %d\n", i)
 				lock.Unlock()
-				pool.Release()
+				pool.Release(nil)
 				wg.Done()
 			}()
 		}
@@ -65,7 +65,7 @@ var _ = Describe("Limit Pool Test Environment", func() {
 				fmt.Printf("unlocking %d\n", i)
 				lock.Unlock()
 				time.Sleep(100 * time.Millisecond)
-				pool.Release()
+				pool.Release(nil)
 				wg.Done()
 			}()
 		}

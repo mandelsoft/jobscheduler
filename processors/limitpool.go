@@ -47,22 +47,16 @@ type limitpool struct {
 }
 
 func NewLimitPool(limit int) LimitPool {
-	return &limitpool{defaultPool: defaultPool{monitor: syncutils.NewMutexMonitor(), available: limit}, limit: limit}
-}
-
-func (p *limitpool) GetPool() Pool {
+	p := &limitpool{defaultPool: defaultPool{monitor: syncutils.NewMutexMonitor(), available: limit}, limit: limit}
+	p.self = p
 	return p
-}
-
-func (p *limitpool) Monitor() syncutils.Monitor {
-	return p.Monitor()
 }
 
 func (p *limitpool) Inc() {
 	p.monitor.Lock()
 	p.limit++
 	p.available++
-	p.monitor.Signal()
+	p.monitor.Signal(nil)
 }
 
 func (p *limitpool) Dec(ctx context.Context) error {
@@ -103,11 +97,11 @@ func (p *limitpool) Available() int {
 	return p.available
 }
 
-func (p *limitpool) Release() {
+func (p *limitpool) Release(ctx context.Context) {
 	p.monitor.Lock()
 	if p.available == p.limit {
 		p.monitor.Unlock()
 		panic("release exceeds limit")
 	}
-	p.monitor.Signal()
+	p.monitor.Signal(ctx)
 }

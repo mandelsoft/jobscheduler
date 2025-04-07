@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
+	"github.com/mandelsoft/jobscheduler/syncutils/utils"
 	"github.com/mandelsoft/logging"
 )
 
@@ -24,30 +25,34 @@ type mutex struct {
 	locked  bool
 }
 
-func options(args ...any) (string, bool) {
+func options(args ...any) (string, bool, utils.WaitingHandler) {
 	log := false
 	name := ""
+	var handler utils.WaitingHandler
 	for _, e := range args {
 		switch d := e.(type) {
 		case bool:
 			log = d
 		case string:
 			name = d
+		case utils.WaitingHandler:
+			handler = d
 		}
 	}
-	return name, log
+	return name, log, handler
 }
 
 // NewMutex create a new Mutex, optional
 // arguments are of type bool for enable logging
-// or string for the name of the Mutex.
+// string for the name of the Mutex, or utils.WaitingHandler
+// for the  created monitor.
 func NewMutex(args ...any) Mutex {
-	name, log := options(args...)
-	return &mutex{monitor: NewMutexMonitor(), log: log, name: name}
+	name, log, h := options(args...)
+	return &mutex{monitor: NewMutexMonitor(h), log: log, name: name}
 }
 
 func NewMutex2(m Monitor, args ...any) Mutex {
-	name, log := options(args...)
+	name, log, _ := options(args...)
 	return &mutex{monitor: m, log: log, name: name}
 }
 
@@ -100,5 +105,5 @@ func (l *mutex) Unlock() {
 		panic("unlocking unlocked mutex")
 	}
 	l.locked = false
-	l.monitor.Signal()
+	l.monitor.Signal(nil)
 }

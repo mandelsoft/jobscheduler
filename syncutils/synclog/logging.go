@@ -25,9 +25,9 @@ func TraceCaller(msg string, args ...interface{}) {
 		if ok {
 			details := runtime.FuncForPC(pc)
 			if details != nil {
-				Log.Trace(msg, append([]any{"location", fmt.Sprintf("%s#%d", file, no), "function", details.Name()}, args...))
+				Log.Trace(msg, append([]any{"location", fmt.Sprintf("%s#%d", file, no), "function", details.Name()}, args...)...)
 			} else {
-				Log.Trace(msg, append([]any{"location", fmt.Sprintf("%s#%d", file, no)}, args...))
+				Log.Trace(msg, append([]any{"location", fmt.Sprintf("%s#%d", file, no)}, args...)...)
 			}
 		} else {
 			Log.Trace(msg, args...)
