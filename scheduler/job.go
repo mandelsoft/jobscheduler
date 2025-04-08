@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
 	"sync"
 
@@ -30,6 +31,9 @@ type job struct {
 	err        error
 	result     Result
 	handlers   []EventHandler
+
+	extension JobExtension
+	writer    io.Writer
 
 	wg sync.WaitGroup
 }
@@ -62,6 +66,13 @@ func (j *job) GetState() State {
 	return j.state.State()
 }
 
+func (j *job) GetExtension(typ string) JobExtension {
+	if j.extension == nil {
+		return nil
+	}
+	return j.extension.GetExtension(typ)
+}
+
 func (j *job) GetResult() (Result, error) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
@@ -82,20 +93,25 @@ func (j *job) setState(jobs stateJobs) {
 		j.state.Remove(j)
 	}
 
+	old := j.state
 	j.state = jobs
 	jobs.Add(j)
+	if old != nil && (old.State() == INITIAL || old.State() == WAITING || old.State() == PENDING) && jobs.State() == RUNNING {
+		j.extension.Start()
+	}
+	j.extension.SetState(jobs.State())
 	e := JobEvent{j, jobs.State()}
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
-	fmt.Printf("report event %s\n", e)
+	// fmt.Printf("report event %s\n", e)
 	go func(handlers []EventHandler) {
-		fmt.Printf("report start %s\n", e)
+		// fmt.Printf("report start %s\n", e)
 		for _, h := range handlers {
 			h.HandleJobEvent(e)
 		}
 		j.scheduler.Raise(e)
-		fmt.Printf("report finished %s\n", e)
+		// fmt.Printf("report finished %s\n", e)
 		wg.Done()
 	}(slices.Clone(j.handlers))
 
@@ -103,7 +119,8 @@ func (j *job) setState(jobs stateJobs) {
 	wg.Wait()
 	switch jobs.State() {
 	case DONE, DISCARDED:
-		fmt.Printf("job %s %s\n", j.id, jobs.State())
+		// fmt.Printf("job %s %s\n", j.id, jobs.State())
+		j.extension.Close()
 		j.wg.Done()
 	}
 }
@@ -139,7 +156,7 @@ func (j *job) Schedule() error {
 		return fmt.Errorf("already scheduled")
 	}
 
-	fmt.Printf("schedule job %s\n", j.id)
+	log.Debug("schedule job", "job", j.id)
 
 	j.wg.Add(1)
 	if j.definition.discard != nil {

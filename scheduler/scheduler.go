@@ -83,9 +83,10 @@ func setScheduler(ctx context.Context, scheduler Scheduler) context.Context {
 }
 
 type scheduler struct {
-	lock   synclog.Mutex
-	ctx    context.Context
-	cancel context.CancelFunc
+	lock      synclog.Mutex
+	ctx       context.Context
+	cancel    context.CancelFunc
+	extension Extension
 
 	name       string
 	numRange   int
@@ -112,9 +113,9 @@ func New(name ...string) Scheduler {
 	}
 	q, l := processors.NewQueueWithName[job](sn, func(j *job) string { return j.id })
 	s := &scheduler{
-		name: sn,
-		lock: synclog.NewMutex(sn),
-
+		name:      sn,
+		lock:      synclog.NewMutex(sn),
+		extension: newDefaultExtension(),
 		initial:   newState(INITIAL),
 		pending:   &pendingState{q},
 		waiting:   newState(WAITING),
@@ -128,6 +129,10 @@ func New(name ...string) Scheduler {
 	s.processors = processors.NewProcessors[*job](s.create, s.limiter)
 	s.processors.SetStateHandler(&stateHandler{s})
 	return s
+}
+
+func (s *scheduler) SetExtension(e Extension) {
+	s.extension = e
 }
 
 func (s *scheduler) GetName() string {
@@ -149,8 +154,16 @@ func (s *scheduler) Wait() {
 	s.processors.Wait()
 }
 
-func (s *scheduler) AddProcessor() {
-	s.processors.New()
+func (s *scheduler) AddProcessor(n ...int) {
+	if len(n) == 0 {
+		s.processors.New()
+	} else {
+		for _, c := range n {
+			for i := 0; i < c; i++ {
+				s.processors.New()
+			}
+		}
+	}
 }
 
 func (s *scheduler) RemoveProcessor(ctx context.Context) {
@@ -205,6 +218,8 @@ func (s *scheduler) IsStarted() bool {
 }
 
 func (s *scheduler) Apply(def JobDefinition) (Job, error) {
+	var err error
+
 	if !s.IsStarted() {
 		return nil, fmt.Errorf("not started")
 	}
@@ -214,6 +229,11 @@ func (s *scheduler) Apply(def JobDefinition) (Job, error) {
 	id := fmt.Sprintf("%s[%d]", def.name, s.jobRange)
 	s.lock.Unlock()
 
+	ext, err := s.extension.JobExtension(id, def)
+	if err != nil {
+		return nil, err
+	}
+
 	j := &job{
 		lock:       synclog.NewMutex(fmt.Sprintf("job %s", id)),
 		id:         id,
@@ -222,6 +242,8 @@ func (s *scheduler) Apply(def JobDefinition) (Job, error) {
 		state:      nil,
 		err:        nil,
 		result:     nil,
+		extension:  ext,
+		writer:     ext.Writer(),
 	}
 
 	for _, h := range def.handlers {

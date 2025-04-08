@@ -13,6 +13,8 @@ type WaitGroup struct {
 	waiting utils.Waiting
 }
 
+// NewWaitGroup creates a new WaitGroup working on
+// a Pool. The pool must be bound to the context.Context.
 func NewWaitGroup() *WaitGroup {
 	return &WaitGroup{}
 }

@@ -2,7 +2,9 @@ package scheduler
 
 import (
 	"context"
+	"io"
 
+	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/sliceutils"
 	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/queue"
@@ -29,14 +31,20 @@ const DEFAULT_PRIORITY Priority = 100
 type Scheduler interface {
 	processors.PoolProvider
 
-	AddProcessor()
+	AddProcessor(n ...int)
 	RemoveProcessor(ctx context.Context)
+	SetExtension(e Extension)
+
 	Run(ctx context.Context) error
 
-	Apply(JobDefinition) (Job, error)
+	JobManager
 
 	Cancel()
 	Wait()
+}
+
+type JobManager interface {
+	Apply(JobDefinition) (Job, error)
 }
 
 type Job interface {
@@ -52,11 +60,18 @@ type Job interface {
 	Schedule() error
 	Wait()
 
+	GetExtension(typ string) JobExtension
+
 	RegisterHandler(handler EventHandler)
 	UnregisterHandler(handler EventHandler)
 }
 
-type SchedulingContext = context.Context
+type SchedulingContext interface {
+	context.Context
+	io.Writer
+
+	Job() Job
+}
 
 type Result interface{}
 
@@ -75,16 +90,26 @@ type EventHandler interface {
 }
 
 type JobDefinition struct {
-	name     string
-	runner   Runner
-	trigger  condition.Condition
-	discard  condition.Condition
-	priority Priority
-	handlers []EventHandler
+	name      string
+	runner    Runner
+	trigger   condition.Condition
+	discard   condition.Condition
+	priority  Priority
+	handlers  []EventHandler
+	extension ExtensionDefinition
 }
 
-func DefineJob(name string, runner Runner) JobDefinition {
-	return JobDefinition{name: name, runner: runner, priority: DEFAULT_PRIORITY}
+func DefineJob(name string, runner ...Runner) JobDefinition {
+	return JobDefinition{name: name, runner: general.Optional(runner...), priority: DEFAULT_PRIORITY}
+}
+
+func (d JobDefinition) GetName() string {
+	return d.name
+}
+
+func (d JobDefinition) SetRunner(r Runner) JobDefinition {
+	d.runner = r
+	return d
 }
 
 func (d JobDefinition) SetPriority(p Priority) JobDefinition {
@@ -105,4 +130,19 @@ func (d JobDefinition) SetDiscardCondition(c condition.Condition) JobDefinition 
 func (d JobDefinition) AddHandler(h EventHandler) JobDefinition {
 	d.handlers = sliceutils.CopyAppend(d.handlers, h)
 	return d
+}
+
+func (d JobDefinition) SetExtension(e ExtensionDefinition) JobDefinition {
+	d.extension = e
+	return d
+}
+
+func (d JobDefinition) GetExtension(typ ...string) ExtensionDefinition {
+	if len(typ) == 0 || typ[0] == "" {
+		return d.extension
+	}
+	if d.extension == nil {
+		return nil
+	}
+	return d.extension.GetExtension(typ[0])
 }

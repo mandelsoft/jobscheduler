@@ -18,8 +18,9 @@ var _ = Describe("Limit Pool Test Environment", func() {
 		pool = processors.NewLimitPool(1)
 	})
 
-	It("limit 1", func(ctx SpecContext) {
-		lock := processors.NewMutex(pool)
+	It("limit 1", func(sctx SpecContext) {
+		ctx := processors.WithPool(sctx, pool)
+		lock := processors.NewMutex()
 		MustBeSuccessful(lock.Lock(ctx))
 
 		wg := syncutils.NewWaitGroup()
@@ -46,8 +47,9 @@ var _ = Describe("Limit Pool Test Environment", func() {
 		Expect(time.Now().Sub(now)).To(BeNumerically(">", 1000*time.Millisecond))
 	}, SpecTimeout(3*time.Second))
 
-	It("limit 2", func(ctx SpecContext) {
-		lock := processors.NewMutex(pool)
+	It("limit 2", func(sctx SpecContext) {
+		ctx := processors.WithPool(sctx, pool)
+		lock := processors.NewMutex()
 		MustBeSuccessful(lock.Lock(ctx))
 
 		pool.Inc()

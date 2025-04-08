@@ -22,6 +22,6 @@ func GetPool(ctx context.Context) Pool {
 	return poolAttr.Get(ctx)
 }
 
-func SetPool(ctx context.Context, p Pool) context.Context {
+func WithPool(ctx context.Context, p Pool) context.Context {
 	return poolAttr.Set(ctx, p)
 }

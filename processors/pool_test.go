@@ -16,10 +16,11 @@ var _ = Describe("Pool Test Environment", func() {
 
 	BeforeEach(func() {
 		p = processors.NewDefaultPool()
-		m = processors.NewMutex(p)
+		m = processors.NewMutex()
 	})
 
-	It("", func(ctx SpecContext) {
+	It("", func(sctx SpecContext) {
+		ctx := processors.WithPool(sctx, p)
 		MustBeSuccessful(m.Lock(ctx))
 		wg := syncutils.NewWaitGroup()
 		wg.Add(1)

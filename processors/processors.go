@@ -121,7 +121,7 @@ func (p *Processors[E]) Run(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	p.ctx, p.cancel = context.WithCancel(SetPool(ctx, p))
+	p.ctx, p.cancel = context.WithCancel(WithPool(ctx, p))
 
 	for _, r := range p.runners {
 		go func() {

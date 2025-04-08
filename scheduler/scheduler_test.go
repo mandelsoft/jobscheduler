@@ -132,8 +132,8 @@ var _ = Describe("Scheduler Test Environment", func() {
 				scheduler.RunnerFunc(func(ctx scheduler.SchedulingContext) (scheduler.Result, error) {
 					return nil, nil
 				})).AddHandler(handler)
-			job1 := Must(sched.Apply(def))
 
+			job1 := Must(sched.Apply(def))
 			job2 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job1))))
 			job3 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job2))))
 

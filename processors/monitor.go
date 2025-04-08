@@ -11,6 +11,8 @@ type Monitor interface {
 	syncutils.Monitor
 }
 
+// NewMonitor creates a new Monitor working on
+// a Pool. The pool must be bound to the context.Context.
 func NewMonitor() Monitor {
 	return syncutils.NewMutexMonitor(limithandler{})
 }
