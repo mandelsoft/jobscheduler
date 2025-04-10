@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/mandelsoft/goutils/general"
+	"github.com/mandelsoft/goutils/generics"
 	"github.com/mandelsoft/jobscheduler/scheduler"
 	"github.com/modern-go/reflect2"
 )
@@ -44,6 +45,12 @@ func (t *TypeBase[T]) Self() T {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+func _GetExtension[E, T any](p Provider[E], typ string) T {
+	return generics.Cast[T](p.GetExtension(typ))
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type ExtensionDefinition struct {
 	TypeBase[scheduler.ExtensionDefinition]
 }
@@ -52,6 +59,14 @@ var _ scheduler.ExtensionDefinition = (*ExtensionDefinition)(nil)
 
 func NewExtensionDefinition(self scheduler.ExtensionDefinition, typ string, nested ...scheduler.ExtensionDefinition) ExtensionDefinition {
 	return ExtensionDefinition{NewBase[scheduler.ExtensionDefinition](self, typ, general.Optional(nested...))}
+}
+
+func (e *ExtensionDefinition) SetSelf(self scheduler.ExtensionDefinition) {
+	e.self = self
+}
+
+func GetExtensionDefinition[E scheduler.ExtensionDefinition](p Provider[scheduler.ExtensionDefinition], typ string) E {
+	return _GetExtension[scheduler.ExtensionDefinition, E](p, typ)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,11 +88,15 @@ func (e *Extension) Setup(s scheduler.Scheduler) error {
 	return nil
 }
 
-func (e *Extension) JobExtension(id string, def scheduler.JobDefinition) (scheduler.JobExtension, error) {
+func (e *Extension) JobExtension(id string, def scheduler.JobDefinition, parent scheduler.Job) (scheduler.JobExtension, error) {
 	if e.nested != nil {
-		return e.nested.JobExtension(id, def)
+		return e.nested.JobExtension(id, def, parent)
 	}
 	return nil, nil
+}
+
+func GetExtensionD[E scheduler.Extension](p Provider[scheduler.Extension], typ string) E {
+	return _GetExtension[scheduler.Extension, E](p, typ)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +108,7 @@ type JobExtension struct {
 var _ scheduler.JobExtension = (*JobExtension)(nil)
 
 func NewJobExtension(self scheduler.JobExtension, typ string, id string, def scheduler.JobDefinition, e Extension) (JobExtension, error) {
-	nested, err := e.JobExtension(id, def)
+	nested, err := e.JobExtension(id, def, nil)
 	if err != nil {
 		return JobExtension{}, err
 	}
@@ -120,4 +139,8 @@ func (e *JobExtension) Close() error {
 		return e.nested.Close()
 	}
 	return nil
+}
+
+func GetJobExtension[E scheduler.JobExtension](p Provider[scheduler.JobExtension], typ string) E {
+	return _GetExtension[scheduler.JobExtension, E](p, typ)
 }

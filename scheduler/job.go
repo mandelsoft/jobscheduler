@@ -25,6 +25,8 @@ type job struct {
 	id        string
 	lock      synclog.Mutex
 	scheduler *scheduler
+	parent    *job
+	children  []*job
 
 	definition JobDefinition
 	state      stateJobs
@@ -175,6 +177,34 @@ func (j *job) Schedule() error {
 		jobs = j.scheduler.waiting
 	}
 	return j.assign(jobs)
+}
+
+func (j *job) finishChild(c *job) {
+	j.lock.Lock()
+	for i, e := range j.children {
+		if e == c {
+			j.children = append(j.children[:i], j.children[i+1:]...)
+			break
+		}
+	}
+	if j.state.State() == ZOMBIE && len(j.children) == 0 {
+		j.setState(j.scheduler.done)
+	} else {
+		j.lock.Unlock()
+	}
+}
+
+func (j *job) finish() {
+	if j.parent != nil {
+		j.parent.finishChild(j)
+	}
+	j.lock.Lock()
+	if len(j.children) > 0 {
+		j.setState(j.scheduler.zombie)
+	} else {
+		j.setState(j.scheduler.done)
+
+	}
 }
 
 func (j *job) Wait() {

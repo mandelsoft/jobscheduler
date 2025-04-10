@@ -68,7 +68,7 @@ var _ = Describe("Scheduler Test Environment", func() {
 				scheduler.RunnerFunc(func(ctx scheduler.SchedulingContext) (scheduler.Result, error) {
 					return nil, nil
 				}))
-			job := Must(sched.Apply(def))
+			job := Must(sched.Apply(def, nil))
 			job.RegisterHandler(handler)
 			MustBeSuccessful(job.Schedule())
 			job.Wait()
@@ -86,10 +86,10 @@ var _ = Describe("Scheduler Test Environment", func() {
 				scheduler.RunnerFunc(func(ctx scheduler.SchedulingContext) (scheduler.Result, error) {
 					return nil, nil
 				})).AddHandler(handler)
-			job1 := Must(sched.Apply(def))
+			job1 := Must(sched.Apply(def, nil))
 
-			job2 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job1))))
-			job3 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job2))))
+			job2 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job1)), nil))
+			job3 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job2)), nil))
 
 			MustBeSuccessful(job3.Schedule())
 			MustBeSuccessful(job2.Schedule())
@@ -133,9 +133,9 @@ var _ = Describe("Scheduler Test Environment", func() {
 					return nil, nil
 				})).AddHandler(handler)
 
-			job1 := Must(sched.Apply(def))
-			job2 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job1))))
-			job3 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job2))))
+			job1 := Must(sched.Apply(def, nil))
+			job2 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job1)), nil))
+			job3 := Must(sched.Apply(def.SetCondition(scheduler.DependsOn(job2)), nil))
 
 			MustBeSuccessful(job3.Schedule())
 			MustBeSuccessful(job2.Schedule())
@@ -185,9 +185,9 @@ var _ = Describe("Scheduler Test Environment", func() {
 					fmt.Printf("finishing %s\n", scheduler.GetJob(ctx))
 					return nil, nil
 				})).AddHandler(handler)
-			job1 := Must(sched.Apply(def))
-			job2 := Must(sched.Apply(def))
-			job3 := Must(sched.Apply(def))
+			job1 := Must(sched.Apply(def, nil))
+			job2 := Must(sched.Apply(def, nil))
+			job3 := Must(sched.Apply(def, nil))
 
 			MustBeSuccessful(job3.Schedule())
 			MustBeSuccessful(job2.Schedule())

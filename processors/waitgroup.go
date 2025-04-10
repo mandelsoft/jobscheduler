@@ -16,7 +16,7 @@ type WaitGroup struct {
 // NewWaitGroup creates a new WaitGroup working on
 // a Pool. The pool must be bound to the context.Context.
 func NewWaitGroup() *WaitGroup {
-	return &WaitGroup{}
+	return &WaitGroup{waiting: utils.NewWaiting(&limithandler{})}
 }
 
 func (wg *WaitGroup) Add(delta int) {

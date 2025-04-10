@@ -8,7 +8,7 @@ type Extension interface {
 	GetExtension(typ string) Extension
 
 	Setup(s Scheduler) error
-	JobExtension(id string, definition JobDefinition) (JobExtension, error)
+	JobExtension(id string, definition JobDefinition, parent Job) (JobExtension, error)
 }
 
 type ExtensionDefinition interface {

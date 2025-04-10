@@ -41,9 +41,9 @@ func main() {
 			SetAutoClose(false),
 		))
 
-	job1, _ := sched.Apply(d1)
-	job2, _ := sched.Apply(d1)
-	job3, _ := sched.Apply(d2)
+	job1, _ := sched.Apply(d1, nil)
+	job2, _ := sched.Apply(d1, nil)
+	job3, _ := sched.Apply(d2, nil)
 
 	job1.Schedule()
 	job3.Schedule()
@@ -53,6 +53,8 @@ func main() {
 	job1.Wait()
 	job2.Wait()
 	job3.Wait()
+	prog.Close()
+	prog.Wait(nil)
 
 }
 

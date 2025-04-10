@@ -6,6 +6,7 @@ import (
 	"iter"
 	"maps"
 	"sync"
+	"sync/atomic"
 
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/set"
@@ -89,8 +90,8 @@ type scheduler struct {
 	extension Extension
 
 	name       string
-	numRange   int
-	jobRange   int
+	numRange   atomic.Uint64
+	jobRange   atomic.Uint64
 	processors *processors.Processors[*job]
 	limiter    processors.Limiter[*job]
 
@@ -101,6 +102,7 @@ type scheduler struct {
 	ready     *generalState
 	blocked   *generalState
 	done      *generalState
+	zombie    *generalState
 	discarded *generalState
 }
 
@@ -123,6 +125,7 @@ func New(name ...string) Scheduler {
 		ready:     newState(READY),
 		blocked:   newState(BLOCKED),
 		done:      newState(DONE),
+		zombie:    newState(ZOMBIE),
 		discarded: newState(DISCARDED),
 		limiter:   l,
 	}
@@ -217,19 +220,25 @@ func (s *scheduler) IsStarted() bool {
 	return s.processors.IsStarted()
 }
 
-func (s *scheduler) Apply(def JobDefinition) (Job, error) {
+func (s *scheduler) Apply(def JobDefinition, parent ...Job) (Job, error) {
 	var err error
 
 	if !s.IsStarted() {
 		return nil, fmt.Errorf("not started")
 	}
 
-	s.lock.Lock()
-	s.jobRange++
-	id := fmt.Sprintf("%s[%d]", def.name, s.jobRange)
-	s.lock.Unlock()
+	var p *job
+	var pi Job // avoid types nil pointer (I love go)
+	if pi = general.Optional(parent...); pi != nil {
+		p = pi.(*job)
+		p.lock.Lock()
+		defer p.lock.Unlock()
+	}
 
-	ext, err := s.extension.JobExtension(id, def)
+	n := s.jobRange.Add(1)
+	id := fmt.Sprintf("%s[%d]", def.name, n)
+
+	ext, err := s.extension.JobExtension(id, def, pi)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +252,11 @@ func (s *scheduler) Apply(def JobDefinition) (Job, error) {
 		err:        nil,
 		result:     nil,
 		extension:  ext,
+		parent:     p,
 		writer:     ext.Writer(),
+	}
+	if p != nil {
+		p.children = append(p.children, j)
 	}
 
 	for _, h := range def.handlers {

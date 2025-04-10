@@ -46,8 +46,17 @@ func (e *Extension) Setup(s scheduler.Scheduler) error {
 	return e.Extension.Setup(s)
 }
 
-func (e *Extension) JobExtension(id string, jd scheduler.JobDefinition) (scheduler.JobExtension, error) {
+func (e *Extension) JobExtension(id string, jd scheduler.JobDefinition, parent scheduler.Job) (scheduler.JobExtension, error) {
 	var err error
+
+	var w io.Writer = os.Stdout
+
+	if parent != nil {
+		p := extensions.GetJobExtension[*JobExtension](parent, TYPE)
+		if p != nil {
+			w = p.Writer()
+		}
+	}
 
 	j := &JobExtension{}
 	j.JobExtension, err = extensions.NewJobExtension(j, TYPE, id, jd, e.Extension)
@@ -59,7 +68,7 @@ func (e *Extension) JobExtension(id string, jd scheduler.JobDefinition) (schedul
 	if def != nil {
 		j.writer = def.writer
 	} else {
-		j.writer = os.Stdout
+		j.writer = w
 	}
 
 	return j, nil

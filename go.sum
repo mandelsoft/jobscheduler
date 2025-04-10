@@ -38,6 +38,12 @@ github.com/mandelsoft/ttyprogress v0.0.0-20250408172406-14fd8daffe13 h1:BistRQ5y
 github.com/mandelsoft/ttyprogress v0.0.0-20250408172406-14fd8daffe13/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
 github.com/mandelsoft/ttyprogress v0.0.0-20250409161705-7fcab8c9261f h1:38ehy/TNIJE/gRtlEuhET5j3//2UPm14Cv8oCv09538=
 github.com/mandelsoft/ttyprogress v0.0.0-20250409161705-7fcab8c9261f/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
+github.com/mandelsoft/ttyprogress v0.0.0-20250409173017-2cd5ae2f1bef h1:QUsP1j8uRUlzwVdi5sK/trDgxc/RXfm6T7P0k+ZWIIw=
+github.com/mandelsoft/ttyprogress v0.0.0-20250409173017-2cd5ae2f1bef/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
+github.com/mandelsoft/ttyprogress v0.0.0-20250410095221-855731448ac4 h1:NlZiF5InqHl9rkt1FPq2YZ+tm77NsuDjExAS3Pxd3wc=
+github.com/mandelsoft/ttyprogress v0.0.0-20250410095221-855731448ac4/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
+github.com/mandelsoft/ttyprogress v0.0.0-20250410123745-13a481dc2521 h1:nje3Sawy7A33Pnrr8GSgWolj/zbYw6A1zr6JOLkzfdI=
+github.com/mandelsoft/ttyprogress v0.0.0-20250410123745-13a481dc2521/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
 github.com/mandelsoft/vfs v0.4.3 h1:2UMrxQkMXkcHyuqSFhgFDupQ1fmqpKLZuu04DOHx1PA=
 github.com/mandelsoft/vfs v0.4.3/go.mod h1:zmbhx2ueQc96buqNXg2S88McBMm2mNFNeyGSpSebrHw=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=

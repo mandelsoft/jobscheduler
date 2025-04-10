@@ -21,6 +21,7 @@ const (
 	READY     State = "ready"
 	BLOCKED   State = "blocked"
 	DONE      State = "done"
+	ZOMBIE    State = "zombie"
 	DISCARDED State = "discarded"
 )
 
@@ -44,7 +45,7 @@ type Scheduler interface {
 }
 
 type JobManager interface {
-	Apply(JobDefinition) (Job, error)
+	Apply(def JobDefinition, parent ...Job) (Job, error)
 }
 
 type Job interface {
@@ -71,6 +72,7 @@ type SchedulingContext interface {
 	io.Writer
 
 	Job() Job
+	Scheduler() Scheduler
 }
 
 type Result interface{}
@@ -105,6 +107,11 @@ func DefineJob(name string, runner ...Runner) JobDefinition {
 
 func (d JobDefinition) GetName() string {
 	return d.name
+}
+
+func (d JobDefinition) SetName(name string) JobDefinition {
+	d.name = name
+	return d
 }
 
 func (d JobDefinition) SetRunner(r Runner) JobDefinition {

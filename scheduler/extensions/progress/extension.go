@@ -6,6 +6,7 @@ import (
 
 	"github.com/mandelsoft/goutils/errors"
 	"github.com/mandelsoft/goutils/generics"
+	"github.com/mandelsoft/goutils/optionutils"
 	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/scheduler"
 	"github.com/mandelsoft/jobscheduler/scheduler/extensions"
@@ -22,12 +23,13 @@ const (
 
 type ExtensionDefinition struct {
 	extensions.ExtensionDefinition
-	progress ttyprogress.ElementDefinition[ttyprogress.Element]
+	hideOnClose bool
+	progress    ttyprogress.ElementDefinition[ttyprogress.Element]
 }
 
 var _ scheduler.ExtensionDefinition = (*ExtensionDefinition)(nil)
 
-func Define[T ttyprogress.ElementDefinition[E], E ttyprogress.ProgressElement](d T, nested ...scheduler.ExtensionDefinition) scheduler.ExtensionDefinition {
+func Define[T ttyprogress.ElementDefinition[E], E ttyprogress.ProgressElement](d T, nested ...scheduler.ExtensionDefinition) *ExtensionDefinition {
 	e := &ExtensionDefinition{
 		progress: ttyprogress.GenericDefinition(d),
 	}
@@ -35,18 +37,36 @@ func Define[T ttyprogress.ElementDefinition[E], E ttyprogress.ProgressElement](d
 	return e
 }
 
+func (d *ExtensionDefinition) Dup() *ExtensionDefinition {
+	e := *d
+	e.SetSelf(&e)
+	return &e
+}
+
+// HideOutputOnClose is only used, if the configured indicator does not
+// act as writer (for example a ttyprogress.TextSpinner).
+func (d *ExtensionDefinition) HideOutputOnClose(b ...bool) *ExtensionDefinition {
+	c := d.Dup()
+	c.hideOnClose = optionutils.BoolOption(b...)
+	return c
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type Extension struct {
 	extensions.Extension
-	scheduler scheduler.Scheduler
-	progress  ttyprogress.Context
+	scheduler    scheduler.Scheduler
+	pctx         ttyprogress.Context
+	defaultGroup *ttyprogress.AnonymousGroupDefinition
 }
 
 var _ scheduler.Extension = (*Extension)(nil)
 
 func New(p ttyprogress.Context, nested ...scheduler.Extension) scheduler.Extension {
-	e := &Extension{progress: p}
+	e := &Extension{
+		pctx:         p,
+		defaultGroup: ttyprogress.NewAnonymousGroup().SetGap("  "),
+	}
 	e.Extension = extensions.NewExtension(e, TYPE, nested...)
 	return e
 }
@@ -56,8 +76,17 @@ func (e *Extension) Setup(s scheduler.Scheduler) error {
 	return e.Extension.Setup(s)
 }
 
-func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition) (scheduler.JobExtension, error) {
+func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition, parent scheduler.Job) (scheduler.JobExtension, error) {
 	var err error
+
+	var ctx ttyprogress.Container = e.pctx
+
+	if parent != nil {
+		p := extensions.GetJobExtension[*JobExtension](parent, TYPE)
+		if p != nil {
+			ctx = p.group
+		}
+	}
 
 	j := &JobExtension{}
 	j.JobExtension, err = extensions.NewJobExtension(j, TYPE, jid, jd, e.Extension)
@@ -65,9 +94,9 @@ func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition) (schedu
 		return nil, err
 	}
 
-	def := generics.Cast[*ExtensionDefinition](jd.GetExtension(TYPE))
+	def := extensions.GetExtensionDefinition[*ExtensionDefinition](jd.GetExtension(), TYPE)
 	if def != nil {
-		p, err := def.progress.Add(e.progress)
+		p, err := def.progress.Add(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -77,13 +106,21 @@ func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition) (schedu
 		if w, ok := j.progress.(io.WriteCloser); ok {
 			j.writer = w
 		} else {
-			j.writer, err = ttyprogress.NewText(3).Add(e.progress)
+			j.writer, err = ttyprogress.NewText(3).
+				SetGap("  ").
+				HideOnClose(def.hideOnClose).
+				Add(ctx)
 			if err != nil {
 				return nil, err
 			}
 		}
 	} else {
 		j.writer = ctxutils.NopCloser(os.Stdout)
+	}
+
+	j.group, err = e.defaultGroup.Add(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return j, nil
@@ -98,6 +135,7 @@ func GetExtension(job scheduler.Job) *JobExtension {
 type JobExtension struct {
 	extensions.JobExtension
 	progress ttyprogress.ProgressElement
+	group    ttyprogress.AnonymousGroup
 	writer   io.WriteCloser
 }
 
@@ -116,8 +154,10 @@ func (j *JobExtension) Close() error {
 	if j.progress != nil {
 		err.Add(j.progress.Close())
 	}
-	err.Add(j.writer.Close())
-	return err.Add(j.JobExtension.Close()).Result()
+	err.Add(j.writer.Close()).
+		Add(j.group.Close()).
+		Add(j.JobExtension.Close())
+	return err.Result()
 }
 
 func (j *JobExtension) Start() {

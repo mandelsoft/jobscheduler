@@ -29,7 +29,7 @@ func (e *_Extension) Setup(s Scheduler) error {
 	return nil
 }
 
-func (e *_Extension) JobExtension(id string, jd JobDefinition) (JobExtension, error) {
+func (e *_Extension) JobExtension(id string, definition JobDefinition, parent Job) (JobExtension, error) {
 	return &_JobExtension{
 		writer: os.Stdout,
 	}, nil

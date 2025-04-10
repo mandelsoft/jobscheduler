@@ -15,6 +15,10 @@ func (c *schedulingContext) Job() Job {
 	return c.job
 }
 
+func (c *schedulingContext) Scheduler() Scheduler {
+	return c.job.GetScheduler()
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 type processor struct {
@@ -37,7 +41,7 @@ func (p *processor) Run(ctx context.Context) {
 		log.Debug("start job {{job}} on processor {{processor}}", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 		job.SetState(p.scheduler.running)
 		job.definition.runner.Run(&schedulingContext{setJob(ctx, job), job.writer, job})
-		job.SetState(p.scheduler.done)
+		job.finish()
 		log.Debug("job {{job}} finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 	}
 }

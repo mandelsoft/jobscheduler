@@ -6,7 +6,7 @@ require (
 	github.com/mandelsoft/goutils v0.0.0-20250407170123-aaa63558c411
 	github.com/mandelsoft/logging v0.0.0-20240618075559-fdca28a87b0a
 	github.com/mandelsoft/ttycolors v0.0.0-20250408150127-1bc997885f7e
-	github.com/mandelsoft/ttyprogress v0.0.0-20250409161705-7fcab8c9261f
+	github.com/mandelsoft/ttyprogress v0.0.0-20250410123745-13a481dc2521
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
