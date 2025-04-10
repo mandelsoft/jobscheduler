@@ -1,0 +1,4 @@
+config:
+  rows: 25
+  frameBox:
+    title: Scheduling Example

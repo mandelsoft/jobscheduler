@@ -14,14 +14,25 @@ import (
 type State string
 
 const (
-	INITIAL   State = "initial"
-	PENDING   State = "pending"
-	WAITING   State = "waiting"
-	RUNNING   State = "running"
-	READY     State = "ready"
-	BLOCKED   State = "blocked"
-	DONE      State = "done"
-	ZOMBIE    State = "zombie"
+	// new unscheduled job
+	INITIAL State = "initial"
+	// waiting for start condition
+	WAITING State = "waiting"
+	// waiting to get started
+	PENDING State = "pending"
+	// processor assigned
+	RUNNING State = "running"
+	// waiting for processor to continue
+	READY State = "ready"
+	// started but waitinmg for synchronization operation
+	BLOCKED State = "blocked"
+	// waiting for uncompleted sub jobs
+	ZOMBIE State = "zombie"
+	// job completed
+	DONE State = "done"
+	// job execution failed
+	FAILED State = "failed"
+	// job not started because of failed start condition
 	DISCARDED State = "discarded"
 )
 

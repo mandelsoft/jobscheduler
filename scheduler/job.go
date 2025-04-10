@@ -30,14 +30,15 @@ type job struct {
 
 	definition JobDefinition
 	state      stateJobs
-	err        error
-	result     Result
 	handlers   []EventHandler
 
 	extension JobExtension
 	writer    io.Writer
 
 	wg sync.WaitGroup
+
+	result Result
+	err    error
 }
 
 var _ Job = (*job)(nil)
@@ -202,7 +203,11 @@ func (j *job) finish() {
 	if len(j.children) > 0 {
 		j.setState(j.scheduler.zombie)
 	} else {
-		j.setState(j.scheduler.done)
+		if j.err != nil {
+			j.setState(j.scheduler.failed)
+		} else {
+			j.setState(j.scheduler.done)
+		}
 
 	}
 }

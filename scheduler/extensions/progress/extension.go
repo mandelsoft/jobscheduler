@@ -10,6 +10,7 @@ import (
 	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/scheduler"
 	"github.com/mandelsoft/jobscheduler/scheduler/extensions"
+	"github.com/mandelsoft/ttycolors"
 	"github.com/mandelsoft/ttyprogress"
 )
 
@@ -169,7 +170,20 @@ func (j *JobExtension) Start() {
 
 func (j *JobExtension) SetState(state scheduler.State) {
 	if j.progress != nil {
-		j.progress.SetVariable(VAR_JOBSTATE, state)
+		f := stateColors[state]
+		if f == nil {
+			j.progress.SetVariable(VAR_JOBSTATE, state)
+		} else {
+			j.progress.SetVariable(VAR_JOBSTATE, f.String(state))
+		}
 	}
 	j.JobExtension.SetState(state)
+}
+
+var stateColors = map[scheduler.State]ttycolors.Format{
+	scheduler.RUNNING: ttycolors.FmtBrightGreen,
+	scheduler.BLOCKED: ttycolors.FmtBrightRed,
+	scheduler.DONE:    ttycolors.FmtCyan,
+	scheduler.PENDING: ttycolors.FmtBlue,
+	scheduler.READY:   ttycolors.FmtGreen,
 }

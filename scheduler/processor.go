@@ -40,7 +40,7 @@ func (p *processor) Run(ctx context.Context) {
 		}
 		log.Debug("start job {{job}} on processor {{processor}}", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 		job.SetState(p.scheduler.running)
-		job.definition.runner.Run(&schedulingContext{setJob(ctx, job), job.writer, job})
+		job.result, job.err = job.definition.runner.Run(&schedulingContext{setJob(ctx, job), job.writer, job})
 		job.finish()
 		log.Debug("job {{job}} finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
 	}

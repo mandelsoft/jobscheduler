@@ -3,73 +3,14 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"iter"
-	"maps"
-	"sync"
 	"sync/atomic"
 
 	"github.com/mandelsoft/goutils/general"
-	"github.com/mandelsoft/goutils/set"
 	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/scheduler/condition"
 	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
-
-type stateJobs interface {
-	Add(*job)
-	Remove(*job)
-	State() State
-}
-
-type pendingState struct {
-	processors.Queue[job, *job]
-}
-
-func (s *pendingState) State() State {
-	return PENDING
-}
-
-type generalState struct {
-	lock  sync.Mutex
-	set   set.Set[*job]
-	state State
-}
-
-func newState(state State) *generalState {
-	return &generalState{
-		set:   set.New[*job](),
-		state: state,
-	}
-}
-
-func (s *generalState) State() State {
-	return s.state
-}
-
-func (s *generalState) Add(j *job) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.set.Add(j)
-}
-
-func (s *generalState) Remove(j *job) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.set.Delete(j)
-}
-
-func (s *generalState) Elements() iter.Seq[*job] {
-	return func(yield func(*job) bool) {
-		for v := range maps.Clone(s.set) {
-			if !yield(v) {
-				return
-			}
-		}
-	}
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,9 +42,10 @@ type scheduler struct {
 	running   *generalState
 	ready     *generalState
 	blocked   *generalState
-	done      *generalState
 	zombie    *generalState
-	discarded *generalState
+	done      *finalState
+	failed    *finalState
+	discarded *finalState
 }
 
 func New(name ...string) Scheduler {
@@ -124,9 +66,10 @@ func New(name ...string) Scheduler {
 		running:   newState(RUNNING),
 		ready:     newState(READY),
 		blocked:   newState(BLOCKED),
-		done:      newState(DONE),
 		zombie:    newState(ZOMBIE),
-		discarded: newState(DISCARDED),
+		done:      newFinalState(DONE),
+		failed:    newFinalState(FAILED),
+		discarded: newFinalState(DISCARDED),
 		limiter:   l,
 	}
 	s.processors = processors.NewProcessors[*job](s.create, s.limiter)
