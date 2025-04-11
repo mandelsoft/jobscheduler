@@ -9,6 +9,8 @@ import (
 	"github.com/mandelsoft/jobscheduler/processors"
 )
 
+////////////////////////////////////////////////////////////////////////////////
+
 type stateJobs interface {
 	Add(*job)
 	Remove(*job)

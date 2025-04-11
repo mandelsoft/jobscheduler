@@ -2,12 +2,10 @@ package progress
 
 import (
 	"io"
-	"os"
 
 	"github.com/mandelsoft/goutils/errors"
 	"github.com/mandelsoft/goutils/generics"
 	"github.com/mandelsoft/goutils/optionutils"
-	"github.com/mandelsoft/jobscheduler/ctxutils"
 	"github.com/mandelsoft/jobscheduler/scheduler"
 	"github.com/mandelsoft/jobscheduler/scheduler/extensions"
 	"github.com/mandelsoft/ttycolors"
@@ -95,28 +93,32 @@ func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition, parent 
 		return nil, err
 	}
 
+	var progress ttyprogress.ElementDefinition[ttyprogress.Element]
+	hideonclose := false
 	def := extensions.GetExtensionDefinition[*ExtensionDefinition](jd.GetExtension(), TYPE)
 	if def != nil {
-		p, err := def.progress.Add(ctx)
+		progress = def.progress
+		hideonclose = def.hideOnClose
+	} else {
+		progress = ttyprogress.GenericDefinition(ttyprogress.NewSpinner(1000).PrependVariable(VAR_JOBID).PrependVariable(VAR_JOBSTATE))
+	}
+	p, err := progress.Add(ctx)
+	if err != nil {
+		return nil, err
+	}
+	j.progress = generics.Cast[ttyprogress.ProgressElement](p)
+	j.progress.SetVariable(VAR_JOBID, jid)
+	j.progress.SetVariable(VAR_JOBNAME, jd.GetName())
+	if w, ok := j.progress.(io.WriteCloser); ok {
+		j.writer = w
+	} else {
+		j.writer, err = ttyprogress.NewText(3).
+			SetGap("  ").
+			HideOnClose(hideonclose).
+			Add(ctx)
 		if err != nil {
 			return nil, err
 		}
-		j.progress = generics.Cast[ttyprogress.ProgressElement](p)
-		j.progress.SetVariable(VAR_JOBID, jid)
-		j.progress.SetVariable(VAR_JOBNAME, jd.GetName())
-		if w, ok := j.progress.(io.WriteCloser); ok {
-			j.writer = w
-		} else {
-			j.writer, err = ttyprogress.NewText(3).
-				SetGap("  ").
-				HideOnClose(def.hideOnClose).
-				Add(ctx)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		j.writer = ctxutils.NopCloser(os.Stdout)
 	}
 
 	j.group, err = e.defaultGroup.Add(ctx)

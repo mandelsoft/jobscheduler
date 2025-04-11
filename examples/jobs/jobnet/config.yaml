@@ -1,0 +1,4 @@
+config:
+  rows: 30
+  frameBox:
+    title: Job Net Example

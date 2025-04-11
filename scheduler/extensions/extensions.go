@@ -66,6 +66,10 @@ func (e *ExtensionDefinition) SetSelf(self scheduler.ExtensionDefinition) {
 }
 
 func GetExtensionDefinition[E scheduler.ExtensionDefinition](p Provider[scheduler.ExtensionDefinition], typ string) E {
+	var _nil E
+	if p == nil {
+		return _nil
+	}
 	return _GetExtension[scheduler.ExtensionDefinition, E](p, typ)
 }
 

@@ -3,6 +3,8 @@ package scheduler
 import (
 	"context"
 	"io"
+
+	"github.com/mandelsoft/jobscheduler/ctxutils"
 )
 
 type schedulingContext struct {
@@ -38,10 +40,15 @@ func (p *processor) Run(ctx context.Context) {
 			log.Debug("discard processor {{processor}}", "processor", p.id)
 			break
 		}
-		log.Debug("start job {{job}} on processor {{processor}}", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
-		job.SetState(p.scheduler.running)
-		job.result, job.err = job.definition.runner.Run(&schedulingContext{setJob(ctx, job), job.writer, job})
-		job.finish()
-		log.Debug("job {{job}} finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
+		if ctxutils.IsCanceled(job.ctx) {
+			log.Debug("job {{job}} was cancelled", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
+			job.SetState(p.scheduler.discarded)
+		} else {
+			log.Debug("start job {{job}} on processor {{processor}}", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
+			job.SetState(p.scheduler.running)
+			job.result, job.err = job.definition.runner.Run(&schedulingContext{setJob(job.ctx, job), job.writer, job})
+			job.finish()
+			log.Debug("job {{job}} finished", "job", job.id, "processor", p.id, "scheduler", p.scheduler.name)
+		}
 	}
 }

@@ -45,8 +45,16 @@ func JobStateReached(job Job, state State) condition.Condition {
 	return &jobStateReached{job: job, check: func(s State) bool { return state == s }}
 }
 
+func JobStateReachedByFunc(job Job, check func(s State) bool) condition.Condition {
+	return &jobStateReached{job: job, check: check}
+}
+
 func JobFinished(job Job) condition.Condition {
-	return &jobStateReached{job: job, check: func(s State) bool { return s == DONE || s == DISCARDED }}
+	return &jobStateReached{job: job, check: IsFinished}
+}
+
+func JobFailed(job Job) condition.Condition {
+	return &jobStateReached{job: job, check: IsFailed}
 }
 
 func (t *jobStateReached) GetState() condition.State {
@@ -69,7 +77,7 @@ func (t *jobStateReached) Evaluate(e condition.Event) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	if t.reached {
+	if t.reached || e == nil {
 		return
 	}
 	if j, ok := e.(JobEvent); ok {

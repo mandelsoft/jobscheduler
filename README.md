@@ -65,4 +65,42 @@ processing each element with an own job. The execution is limited to 2 active
 jobs. The job for every element creates the jobs for the nested elements and
 uses the synchronization operations to wait for their execution.
 
+## Job Nets
 
+Instead of creating single jobs one after the other, the package `scheduler/jobnet`
+offers the possibility to predefine complete sets of jobs  with trigger dependencies
+and execute the net as a whole.
+
+Use `jobnet.DefineNet(name)` to create a new job net. With `jobnet.DefineJob(name, runner)`
+job definitions for the net can be created. They are added to a net by 
+`net.AddJob(job)`. The same definition can be added multiple times to the same net, 
+but the should get a new name for each add by calling (`SetName(name)`). Otherwise the
+new definition for an already configured name will replace the old one.
+
+Special condition definitions provided by the same package can be used
+to create conditions (for example dependencies using `DependsOn(...)`). Jobs are
+referred here by their names used in the composed job net.
+
+Job dependencies MUST NOT be cyclic and all job conditions used in a net must
+resolvable by  the net. This can be checked with the `net.Validate()` call.
+
+The execution of a job net is implemented by a regular job, which instantiates the
+configured jobs with their defined conditions and the waits until those jobs are
+finished.
+
+A regular scheduler job definition is created with `net.For(payload)`. It is possible
+to create the net for a dedicated payload information. which is passed to the runner.
+
+
+A job net runner is a factory for creating a regular job runner.
+It gets a `*jobnet.NetContext`, which offers access to the payload and explicit
+(named) triggers created for jobs of this instance of the scheduled job net.
+The factory then creates a regular job runner for the scheduler job definition,
+which is then instantiated for the scheduler by the job net job.
+
+An example can be found in [`examples/jobs/jobnet`](examples/jobs/jobnet/main.go)
+
+
+<p align="center">
+  <img src="examples/jobs/jobnet/demo.gif" alt="Job Net Demo" title="Job Net Demo" />
+</p>

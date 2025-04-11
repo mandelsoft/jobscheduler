@@ -120,6 +120,7 @@ func (s *scheduler) Run(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	s.ctx = ctx
 	return s.processors.Run(setScheduler(ctx, s))
 }
 
@@ -130,10 +131,15 @@ func (s *scheduler) create(id int) processors.Runner {
 	}
 }
 
-func (s *scheduler) Raise(evt condition.Event) {
+func (s *scheduler) retrigger() {
+	go func() {
+		s._retrigger()
+	}()
+}
+
+func (s *scheduler) _retrigger() {
 	for j := range s.waiting.Elements() {
 		if j.definition.discard != nil {
-			j.definition.trigger.Evaluate(evt)
 			js := j.definition.discard.GetState()
 			if js.Valid {
 				if js.Enabled {
@@ -144,7 +150,6 @@ func (s *scheduler) Raise(evt condition.Event) {
 	}
 	for j := range s.waiting.Elements() {
 		if j.definition.trigger != nil {
-			j.definition.trigger.Evaluate(evt)
 			js := j.definition.trigger.GetState()
 			if js.Valid {
 				if js.Enabled {
@@ -159,8 +164,60 @@ func (s *scheduler) Raise(evt condition.Event) {
 	}
 }
 
+func (s *scheduler) Raise(evt condition.Event) {
+	for j := range s.waiting.Elements() {
+		if j.definition.discard != nil {
+			j.definition.trigger.Evaluate(evt)
+		}
+	}
+	for j := range s.waiting.Elements() {
+		if j.definition.trigger != nil {
+			j.definition.trigger.Evaluate(evt)
+		}
+	}
+	s._retrigger()
+}
+
 func (s *scheduler) IsStarted() bool {
 	return s.processors.IsStarted()
+}
+
+func (s *scheduler) ScheduleDefinitions(defs ...JobDefinition) ([]Job, error) {
+	var err error
+
+	jobs := make([]Job, len(defs))
+	for i, def := range defs {
+		jobs[i], err = s.Apply(def)
+		if err != nil {
+			for _, j := range jobs[:i] {
+				j.(*job).SetState(s.discarded)
+			}
+			return nil, err
+		}
+	}
+
+	for _, e := range jobs {
+		err := e.Schedule()
+		if err != nil {
+			for _, j := range jobs {
+				j.(*job).SetState(s.discarded)
+			}
+			return nil, err
+		}
+	}
+	return jobs, nil
+}
+
+func (s *scheduler) ScheduleDefinition(def JobDefinition, parent ...Job) (Job, error) {
+	job, err := s.Apply(def, parent...)
+	if err != nil {
+		return nil, err
+	}
+	err = job.Schedule()
+	if err != nil {
+		return nil, err
+	}
+	return job, err
 }
 
 func (s *scheduler) Apply(def JobDefinition, parent ...Job) (Job, error) {
@@ -179,30 +236,39 @@ func (s *scheduler) Apply(def JobDefinition, parent ...Job) (Job, error) {
 	}
 
 	n := s.jobRange.Add(1)
-	id := fmt.Sprintf("%s[%d]", def.name, n)
+	id := fmt.Sprintf("%s[%d]", def.GetName(), n)
 
 	ext, err := s.extension.JobExtension(id, def, pi)
 	if err != nil {
 		return nil, err
 	}
 
+	ctx := s.ctx
+	if p != nil {
+		ctx = p.ctx
+	} else {
+		ctx = processors.WithPool(ctx, s.processors)
+	}
+	ctx, cancel := context.WithCancel(ctx)
 	j := &job{
 		lock:       synclog.NewMutex(fmt.Sprintf("job %s", id)),
 		id:         id,
 		scheduler:  s,
-		definition: def,
+		definition: newDefinition(def),
 		state:      nil,
 		err:        nil,
 		result:     nil,
 		extension:  ext,
 		parent:     p,
+		ctx:        ctx,
+		cancel:     cancel,
 		writer:     ext.Writer(),
 	}
 	if p != nil {
 		p.children = append(p.children, j)
 	}
 
-	for _, h := range def.handlers {
+	for _, h := range j.definition.handlers {
 		j.RegisterHandler(h)
 	}
 	j.SetState(s.initial)

@@ -23,11 +23,11 @@ type Data struct {
 var jobDef = scheduler.DefineJob("main").
 	SetExtension(progress.Define(ttyprogress.NewBar().
 		SetWidth(ttyprogress.PercentTerminalSize(20)).
+		SetPredefined(1).SetBracketType(33).
 		PrependVariable(progress.VAR_JOBID).
 		PrependVariable(progress.VAR_JOBSTATE).
 		AppendCompleted().
 		AppendElapsed().
-		SetPredefined(1).SetBracketType(33).
 		SetMinVisualizationColumn(30).
 		SetAutoClose(false),
 	).HideOutputOnClose())
@@ -70,7 +70,7 @@ func main() {
 	ext := progress.New(prog)
 	_ = ext
 
-	sched := scheduler.New("demo1")
+	sched := scheduler.New("demo2")
 
 	nop, useVis := options(os.Args[1:]...)
 	if useVis {

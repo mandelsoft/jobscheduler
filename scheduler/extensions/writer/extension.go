@@ -2,7 +2,6 @@ package writer
 
 import (
 	"io"
-	"os"
 
 	"github.com/mandelsoft/goutils/generics"
 	"github.com/mandelsoft/jobscheduler/scheduler"
@@ -49,7 +48,7 @@ func (e *Extension) Setup(s scheduler.Scheduler) error {
 func (e *Extension) JobExtension(id string, jd scheduler.JobDefinition, parent scheduler.Job) (scheduler.JobExtension, error) {
 	var err error
 
-	var w io.Writer = os.Stdout
+	var w io.Writer = scheduler.Stdout
 
 	if parent != nil {
 		p := extensions.GetJobExtension[*JobExtension](parent, TYPE)

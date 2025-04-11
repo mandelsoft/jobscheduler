@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"io"
+	"slices"
 
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/goutils/sliceutils"
@@ -36,6 +37,44 @@ const (
 	DISCARDED State = "discarded"
 )
 
+func IsFinished(state State) bool {
+	switch state {
+	case DONE, DISCARDED, FAILED:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsDone(state State) bool {
+	switch state {
+	case DONE:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsDiscarded(state State) bool {
+	switch state {
+	case DISCARDED:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsFailed(state State) bool {
+	switch state {
+	case FAILED:
+		return true
+	default:
+		return false
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type Priority = queue.Priority
 
 const DEFAULT_PRIORITY Priority = 100
@@ -57,6 +96,8 @@ type Scheduler interface {
 
 type JobManager interface {
 	Apply(def JobDefinition, parent ...Job) (Job, error)
+	ScheduleDefinition(def JobDefinition, parent ...Job) (Job, error)
+	ScheduleDefinitions(defs ...JobDefinition) ([]Job, error)
 }
 
 type Job interface {
@@ -70,6 +111,7 @@ type Job interface {
 	GetPriority() Priority
 
 	Schedule() error
+	Cancel()
 	Wait()
 
 	GetExtension(typ string) JobExtension
@@ -102,7 +144,17 @@ type EventHandler interface {
 	HandleJobEvent(event JobEvent)
 }
 
-type JobDefinition struct {
+type JobDefinition interface {
+	GetName() string
+	GetRunner() Runner
+	GetCondition() condition.Condition
+	GetDiscardCondition() condition.Condition
+	GetPriority() Priority
+	GetHandlers() []EventHandler
+	GetExtension(typ ...string) ExtensionDefinition
+}
+
+type DefaultJobDefinition struct {
 	name      string
 	runner    Runner
 	trigger   condition.Condition
@@ -112,50 +164,72 @@ type JobDefinition struct {
 	extension ExtensionDefinition
 }
 
-func DefineJob(name string, runner ...Runner) JobDefinition {
-	return JobDefinition{name: name, runner: general.Optional(runner...), priority: DEFAULT_PRIORITY}
+var _ JobDefinition = DefaultJobDefinition{}
+
+func DefineJob(name string, runner ...Runner) DefaultJobDefinition {
+	return DefaultJobDefinition{name: name, runner: general.Optional(runner...), priority: DEFAULT_PRIORITY}
 }
 
-func (d JobDefinition) GetName() string {
+func (d DefaultJobDefinition) GetName() string {
 	return d.name
 }
 
-func (d JobDefinition) SetName(name string) JobDefinition {
+func (d DefaultJobDefinition) SetName(name string) DefaultJobDefinition {
 	d.name = name
 	return d
 }
 
-func (d JobDefinition) SetRunner(r Runner) JobDefinition {
+func (d DefaultJobDefinition) GetRunner() Runner {
+	return d.runner
+}
+
+func (d DefaultJobDefinition) SetRunner(r Runner) DefaultJobDefinition {
 	d.runner = r
 	return d
 }
 
-func (d JobDefinition) SetPriority(p Priority) JobDefinition {
+func (d DefaultJobDefinition) GetPriority() Priority {
+	return d.priority
+}
+
+func (d DefaultJobDefinition) SetPriority(p Priority) DefaultJobDefinition {
 	d.priority = p
 	return d
 }
 
-func (d JobDefinition) SetCondition(c condition.Condition) JobDefinition {
+func (d DefaultJobDefinition) GetCondition() condition.Condition {
+	return d.trigger
+}
+
+func (d DefaultJobDefinition) SetCondition(c condition.Condition) DefaultJobDefinition {
 	d.trigger = c
 	return d
 }
 
-func (d JobDefinition) SetDiscardCondition(c condition.Condition) JobDefinition {
+func (d DefaultJobDefinition) GetDiscardCondition() condition.Condition {
+	return d.discard
+}
+
+func (d DefaultJobDefinition) SetDiscardCondition(c condition.Condition) DefaultJobDefinition {
 	d.discard = c
 	return d
 }
 
-func (d JobDefinition) AddHandler(h EventHandler) JobDefinition {
+func (d DefaultJobDefinition) GetHandlers() []EventHandler {
+	return slices.Clone(d.handlers)
+}
+
+func (d DefaultJobDefinition) AddHandler(h EventHandler) DefaultJobDefinition {
 	d.handlers = sliceutils.CopyAppend(d.handlers, h)
 	return d
 }
 
-func (d JobDefinition) SetExtension(e ExtensionDefinition) JobDefinition {
+func (d DefaultJobDefinition) SetExtension(e ExtensionDefinition) DefaultJobDefinition {
 	d.extension = e
 	return d
 }
 
-func (d JobDefinition) GetExtension(typ ...string) ExtensionDefinition {
+func (d DefaultJobDefinition) GetExtension(typ ...string) ExtensionDefinition {
 	if len(typ) == 0 || typ[0] == "" {
 		return d.extension
 	}
@@ -163,4 +237,16 @@ func (d JobDefinition) GetExtension(typ ...string) ExtensionDefinition {
 		return nil
 	}
 	return d.extension.GetExtension(typ[0])
+}
+
+func newDefinition(def JobDefinition) DefaultJobDefinition {
+	return DefaultJobDefinition{
+		name:      def.GetName(),
+		runner:    def.GetRunner(),
+		trigger:   def.GetCondition(),
+		discard:   def.GetDiscardCondition(),
+		priority:  def.GetPriority(),
+		handlers:  def.GetHandlers(),
+		extension: def.GetExtension(),
+	}
 }

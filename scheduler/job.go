@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/mandelsoft/jobscheduler/ctxutils"
+	"github.com/mandelsoft/jobscheduler/scheduler/condition"
 	"github.com/mandelsoft/jobscheduler/syncutils/synclog"
 )
 
@@ -28,12 +29,14 @@ type job struct {
 	parent    *job
 	children  []*job
 
-	definition JobDefinition
+	definition DefaultJobDefinition
 	state      stateJobs
 	handlers   []EventHandler
 
 	extension JobExtension
 	writer    io.Writer
+	ctx       context.Context
+	cancel    context.CancelFunc
 
 	wg sync.WaitGroup
 
@@ -59,6 +62,15 @@ func (j *job) GetPriority() Priority {
 	return j.definition.priority
 }
 
+func (j *job) IsFinished() bool {
+	switch j.state.State() {
+	case DONE, DISCARDED, FAILED:
+		return true
+	default:
+		return false
+	}
+}
+
 func (j *job) GetState() State {
 	j.lock.Lock()
 	defer j.lock.Unlock()
@@ -74,6 +86,16 @@ func (j *job) GetExtension(typ string) JobExtension {
 		return nil
 	}
 	return j.extension.GetExtension(typ)
+}
+
+func (j *job) Cancel() {
+	j.lock.Lock()
+
+	if j.state.State() == INITIAL {
+		j.setState(j.scheduler.discarded)
+	}
+	j.cancel()
+	j.lock.Unlock()
 }
 
 func (j *job) GetResult() (Result, error) {
@@ -147,6 +169,8 @@ func (j *job) UnregisterHandler(handler EventHandler) {
 }
 
 func (j *job) assign(state stateJobs) error {
+	condition.SetStateTrigger(j.definition.trigger, j.scheduler.retrigger)
+	condition.SetStateTrigger(j.definition.discard, j.scheduler.retrigger)
 	j.setState(state)
 	return nil
 }

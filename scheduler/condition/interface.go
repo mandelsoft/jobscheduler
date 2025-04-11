@@ -10,6 +10,10 @@ func (s State) GetState() State {
 	return s
 }
 
+type StateTrigger interface {
+	SetStateTrigger(func())
+}
+
 type Condition interface {
 	GetState() State
 
@@ -32,4 +36,19 @@ func (f WalkerFunc) Walk(t Condition) bool {
 }
 
 type Event interface {
+}
+
+func SetStateTrigger(c Condition, t func()) {
+	if c == nil {
+		return
+	}
+
+	f := func(e Condition) bool {
+		if s, ok := e.(StateTrigger); ok {
+			s.SetStateTrigger(t)
+		}
+		return true
+	}
+
+	c.Walk(WalkerFunc(f))
 }
