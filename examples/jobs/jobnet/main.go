@@ -9,6 +9,7 @@ import (
 
 	"github.com/mandelsoft/jobscheduler/scheduler"
 	"github.com/mandelsoft/jobscheduler/scheduler/condition"
+	"github.com/mandelsoft/jobscheduler/scheduler/extensions/buffered"
 	"github.com/mandelsoft/jobscheduler/scheduler/extensions/progress"
 	"github.com/mandelsoft/jobscheduler/scheduler/jobnet"
 	"github.com/mandelsoft/ttyprogress"
@@ -17,9 +18,10 @@ import (
 func main() {
 	prog := ttyprogress.For(os.Stdout)
 	ext := progress.New(prog)
+	_ = ext
 
 	sched := scheduler.New("jobnet")
-	sched.SetExtension(ext)
+	sched.SetExtension(buffered.New(os.Stdout))
 
 	sched.AddProcessor(2)
 	sched.Run(context.Background())

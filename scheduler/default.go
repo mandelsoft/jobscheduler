@@ -34,6 +34,10 @@ func (e *_Extension) JobExtension(id string, definition JobDefinition, parent Jo
 	}, nil
 }
 
+func (e *_Extension) Close() error {
+	return nil
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type _JobExtension struct {

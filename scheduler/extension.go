@@ -9,6 +9,8 @@ type Extension interface {
 
 	Setup(s Scheduler) error
 	JobExtension(id string, definition JobDefinition, parent Job) (JobExtension, error)
+
+	Close() error
 }
 
 type ExtensionDefinition interface {

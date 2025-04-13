@@ -102,6 +102,7 @@ func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition, parent 
 	} else {
 		progress = ttyprogress.GenericDefinition(ttyprogress.NewSpinner(1000).PrependVariable(VAR_JOBID).PrependVariable(VAR_JOBSTATE))
 	}
+
 	p, err := progress.Add(ctx)
 	if err != nil {
 		return nil, err
@@ -127,6 +128,11 @@ func (e *Extension) JobExtension(jid string, jd scheduler.JobDefinition, parent 
 	}
 
 	return j, nil
+}
+
+func (e *Extension) Close() error {
+	e.pctx.Close()
+	return e.pctx.Wait(nil)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

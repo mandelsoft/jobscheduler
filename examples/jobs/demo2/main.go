@@ -11,7 +11,9 @@ import (
 	"github.com/mandelsoft/goutils/general"
 	"github.com/mandelsoft/jobscheduler/processors"
 	"github.com/mandelsoft/jobscheduler/scheduler"
+	"github.com/mandelsoft/jobscheduler/scheduler/extensions/buffered"
 	"github.com/mandelsoft/jobscheduler/scheduler/extensions/progress"
+	"github.com/mandelsoft/jobscheduler/scheduler/extensions/writer"
 	"github.com/mandelsoft/ttyprogress"
 )
 
@@ -66,15 +68,11 @@ func main() {
 		},
 	}
 
-	prog := ttyprogress.For(os.Stdout)
-	ext := progress.New(prog)
-	_ = ext
-
 	sched := scheduler.New("demo2")
 
 	nop, useVis := options(os.Args[1:]...)
-	if useVis {
-		sched.SetExtension(ext)
+	if useVis != nil {
+		sched.SetExtension(useVis)
 	}
 	sched.AddProcessor(nop)
 
@@ -85,9 +83,9 @@ func main() {
 	job.Schedule()
 
 	job.Wait()
-	prog.Close()
-	prog.Wait(nil)
-
+	if useVis != nil {
+		useVis.Close()
+	}
 }
 
 type DataProcessor struct {
@@ -157,15 +155,24 @@ func Error(s string) {
 	os.Exit(1)
 }
 
-func options(args ...string) (int, bool) {
+func options(args ...string) (int, scheduler.Extension) {
 	var err error
+	var ext scheduler.Extension
 
 	p := 2
-	ext := false
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "-v":
-			ext = true
+			ext, _ = extension("progress")
+		case "-V":
+			if i+1 >= len(args) {
+				Error("visualization type missing")
+			}
+			ext, err = extension(args[i+1])
+			if err != nil {
+				Error(err.Error())
+			}
+			i++
 		case "-p":
 			if i+1 >= len(args) {
 				Error("number of processors missing")
@@ -180,4 +187,18 @@ func options(args ...string) (int, bool) {
 		}
 	}
 	return p, ext
+}
+
+func extension(name string) (scheduler.Extension, error) {
+	switch name {
+	case "progress":
+		ctx := ttyprogress.For(os.Stdout)
+		return progress.New(ctx), nil
+	case "buffered":
+		return buffered.New(os.Stdout), nil
+	case "writer":
+		return writer.New(), nil
+	default:
+		return nil, fmt.Errorf("unknown extension %q", name)
+	}
 }

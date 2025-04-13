@@ -52,6 +52,8 @@ github.com/mandelsoft/ttyprogress v0.0.0-20250410145357-027609b00d1e h1:p+oMJyE1
 github.com/mandelsoft/ttyprogress v0.0.0-20250410145357-027609b00d1e/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
 github.com/mandelsoft/ttyprogress v0.0.0-20250410145928-f511006bafb5 h1:yuzot9DEY1NAs7mkFkESyH2iqwj+k3Mt47FjeYv3fEs=
 github.com/mandelsoft/ttyprogress v0.0.0-20250410145928-f511006bafb5/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
+github.com/mandelsoft/ttyprogress v0.0.0-20250413141843-bdf3973209b0 h1:SWHAQtZX+Z6qjN9bjYMl91VF1x4pFpq2hLRN1BqUwGc=
+github.com/mandelsoft/ttyprogress v0.0.0-20250413141843-bdf3973209b0/go.mod h1:LomS9dKsSkIWekdPqm4xdHn1ywx1Tynwc4zT136m2Hc=
 github.com/mandelsoft/vfs v0.4.3 h1:2UMrxQkMXkcHyuqSFhgFDupQ1fmqpKLZuu04DOHx1PA=
 github.com/mandelsoft/vfs v0.4.3/go.mod h1:zmbhx2ueQc96buqNXg2S88McBMm2mNFNeyGSpSebrHw=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=

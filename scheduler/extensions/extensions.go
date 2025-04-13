@@ -99,6 +99,10 @@ func (e *Extension) JobExtension(id string, def scheduler.JobDefinition, parent 
 	return nil, nil
 }
 
+func (e *Extension) Close() error {
+	return nil
+}
+
 func GetExtensionD[E scheduler.Extension](p Provider[scheduler.Extension], typ string) E {
 	return _GetExtension[scheduler.Extension, E](p, typ)
 }
