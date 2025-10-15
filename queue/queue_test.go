@@ -150,8 +150,8 @@ var _ = Describe("Queue Test Environment", func() {
 			go func() {
 				defer GinkgoRecover()
 
-				bwq1.Done()
 				log.Info("get 1 started")
+				bwq1.Done()
 				e, err := q.Get(ctx)
 				log.Info("get 1", "element", e, "error", err)
 				found.Add("1", e, err)
@@ -164,10 +164,10 @@ var _ = Describe("Queue Test Environment", func() {
 				defer GinkgoRecover()
 
 				bwq1.Wait()
-				bwq2.Done()
 				log.Info("get 2 started")
-
 				ctx, _ := context.WithTimeout(context.Background(), time.Second)
+				bwq2.Done()
+
 				e, err := q.Get(ctx)
 				log.Info("get 2", "element", e, "error", err)
 				found.Add("2", e, err)
@@ -176,6 +176,7 @@ var _ = Describe("Queue Test Environment", func() {
 
 			go func() {
 				bwq2.Wait()
+				time.Sleep(2 * time.Second)
 				log.Info("add 1")
 				q.Add(e1)
 				time.Sleep(2 * time.Second)
@@ -190,6 +191,6 @@ var _ = Describe("Queue Test Environment", func() {
 				"1": {"e1", nil},
 				"2": {"", context.DeadlineExceeded},
 			}))
-		}, SpecTimeout(2*time.Second))
+		}, SpecTimeout(10*time.Second))
 	})
 })

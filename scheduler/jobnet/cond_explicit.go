@@ -30,7 +30,7 @@ func (e *_Explicit) Prepare(conds map[string]condition.Condition) error {
 	if reflect.TypeOf(c) == reflect.TypeOf(sample) {
 		return nil
 	}
-	return fmt.Errorf("inconsistent explicit condition '%s' (%s <> %s)", e.name, reflect.TypeOf(sample))
+	return fmt.Errorf("inconsistent explicit condition '%s' (%s <> %s)", e.name, reflect.TypeOf(c), reflect.TypeOf(sample))
 }
 
 func (e *_Explicit) Create(ctx *NetContext) (condition.Condition, error) {

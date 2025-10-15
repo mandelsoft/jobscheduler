@@ -4,6 +4,28 @@ import (
 	"context"
 )
 
+type Channel[T any] chan T
+
+func NewChannel[T any](size int) Channel[T] {
+	if size <= 0 {
+		size = 1
+	}
+	return make(chan T, size)
+}
+
+func (c Channel[T]) Send(ctx context.Context, v T) {
+	SendToChannel(ctx, c, v)
+}
+
+func (c Channel[T]) Receive(ctx context.Context) (T, bool, error) {
+	return ReceiveFromChannel(ctx, c)
+}
+
+func (c Channel[T]) Close() error {
+	close(c)
+	return nil
+}
+
 func ReceiveFromChannel[T any](ctx context.Context, c <-chan T) (T, bool, error) {
 	var _nil T
 

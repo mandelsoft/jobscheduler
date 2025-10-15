@@ -112,5 +112,5 @@ func (j *JobExtension) emit() {
 	if strings.HasSuffix(s, "\n") {
 		s = s[:len(s)-1]
 	}
-	fmt.Fprintf(j.ext.writer, j.gap+"  "+strings.ReplaceAll(s, "\n", "\n"+j.gap+"  ")+"\n")
+	fmt.Fprint(j.ext.writer, j.gap+"  "+strings.ReplaceAll(s, "\n", "\n"+j.gap+"  ")+"\n")
 }

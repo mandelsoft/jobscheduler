@@ -29,7 +29,7 @@ func validateList(desc string, list []Condition, jobs map[string]Job) (set.Set[s
 func createList(desc string, list []Condition, create func(...condition.Condition) condition.Condition, ctx *NetContext) (condition.Condition, error) {
 	var cond []condition.Condition
 
-	result := errors.ErrListf(desc)
+	result := errors.ErrListf("%s", desc)
 	for _, e := range list {
 		n, err := e.Create(ctx)
 		if err != nil {

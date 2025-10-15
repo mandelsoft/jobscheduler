@@ -5,7 +5,7 @@ import (
 
 	. "github.com/mandelsoft/goutils/testutils"
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 )
 
 var _ = Describe("Order Test Environment", func() {
@@ -20,15 +20,15 @@ var _ = Describe("Order Test Environment", func() {
 			}
 
 			ordered, cycles := order(elems)
-			Expect(cycles).To(BeNil())
+			gomega.Expect(cycles).To(gomega.BeNil())
 
-			Expect(ordered).To(ContainInOrder(
+			gomega.Expect(ordered).To(ContainInOrder(
 				"D", "E",
 			))
-			Expect(ordered).To(ContainInOrder(
+			gomega.Expect(ordered).To(ContainInOrder(
 				"B", "A",
 			))
-			Expect(ordered).To(ContainInOrder(
+			gomega.Expect(ordered).To(ContainInOrder(
 				"D", "C", "A",
 			))
 		})
@@ -43,8 +43,7 @@ var _ = Describe("Order Test Environment", func() {
 			}
 
 			_, cycles := order(elems)
-			Expect(cycles).To(Equal([][]string{[]string{"D", "A", "C", "D"}}))
-
+			gomega.Expect(cycles).To(gomega.Equal([][]string{[]string{"D", "A", "C", "D"}}))
 		})
 	})
 })
